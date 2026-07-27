@@ -1,0 +1,26 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+*.pem
+.env
+.env*.local
+next-env.d.ts
+*.tsbuildinfo
+
+# ETL
+etl/.venv/
+etl/cache/
+etl/out/
+etl/logs/
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+*.log
+
+# Manuscript (kept out of the public code repo)
+paper/

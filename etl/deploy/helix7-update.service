@@ -1,0 +1,18 @@
+[Unit]
+Description=Helix7 GPCRome data refresh
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# --- edit these two for your server ---
+User=helix7
+WorkingDirectory=/opt/helix7/App
+# --------------------------------------
+ExecStart=/opt/helix7/App/run update
+# a refresh with fresh PubMed counts takes a few minutes; cap generously
+TimeoutStartSec=3600
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

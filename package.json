@@ -1,0 +1,42 @@
+{
+  "name": "helix7",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Helix7 — a high-fidelity atlas of the human GPCRome",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:indexes": "tsx scripts/create-indexes.ts"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "framer-motion": "^12.0.0",
+    "lucide-react": "^0.469.0",
+    "mongodb": "^6.12.0",
+    "next": "^16.2.11",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^3.24.1"
+  },
+  "overrides": {
+    "sharp": "^0.35.3",
+    "postcss": "^8.5.18"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/d3": "^7.4.3",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "docx": "^9.7.1",
+    "playwright": "^1.61.1",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

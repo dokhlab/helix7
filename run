@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+#
+# Helix7 — start every service needed for local development.
+#
+#   ./run           start Docker VM, MongoDB, and the Next.js dev server
+#   ./run status    show what is currently up
+#   ./run stop      stop the dev server's MongoDB (leaves the Docker VM alone)
+#   ./run etl       run the full data pipeline into MongoDB
+#
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$APP_DIR"
+
+MONGO_CONTAINER="helix7-mongo"
+MONGO_PORT="${MONGO_PORT:-27017}"
+WEB_PORT="${PORT:-3000}"
+
+bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; yellow=$'\033[33m'
+red=$'\033[31m'; cyan=$'\033[36m'; reset=$'\033[0m'
+
+step() { printf '%s==>%s %s%s%s\n' "$cyan" "$reset" "$bold" "$1" "$reset"; }
+ok()   { printf '  %s✓%s %s\n' "$green" "$reset" "$1"; }
+warn() { printf '  %s!%s %s\n' "$yellow" "$reset" "$1"; }
+die()  { printf '  %s✗%s %s\n' "$red" "$reset" "$1" >&2; exit 1; }
+
+# The compose plugin isn't always installed; fall back to the standalone binary.
+detect_compose() {
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE=(docker compose)
+  elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE=(docker-compose)
+  else
+    die "neither 'docker compose' nor 'docker-compose' is installed"
+  fi
+}
+
+docker_up() { docker info >/dev/null 2>&1; }
+
+start_docker() {
+  step "Docker engine"
+  if docker_up; then
+    ok "already running"
+    return
+  fi
+  if command -v colima >/dev/null 2>&1; then
+    warn "daemon not reachable — starting Colima (first boot takes ~60s)"
+    colima start --cpu 2 --memory 4 --disk 20 >/dev/null 2>&1 || true
+    for _ in $(seq 1 60); do
+      docker_up && { ok "Colima up"; return; }
+      sleep 2
+    done
+    die "Colima did not become ready — try 'colima start' manually"
+  fi
+  die "Docker is not running. Start Docker Desktop (or Colima) and re-run."
+}
+
+start_mongo() {
+  step "MongoDB"
+  if [ -n "$(docker ps -q -f "name=^${MONGO_CONTAINER}$" 2>/dev/null)" ]; then
+    ok "container already running"
+  else
+    # No --remove-orphans: other projects may share this Docker daemon.
+    "${COMPOSE[@]}" up -d >/dev/null 2>&1 || die "failed to start the mongo container"
+    ok "container started"
+  fi
+
+  printf '  %swaiting for mongo to accept connections…%s' "$dim" "$reset"
+  for _ in $(seq 1 45); do
+    if docker exec "$MONGO_CONTAINER" mongosh --quiet \
+         --eval 'db.runCommand({ping:1}).ok' >/dev/null 2>&1; then
+      printf '\r\033[K'; ok "ready on localhost:${MONGO_PORT}"
+      return
+    fi
+    printf '.'; sleep 1
+  done
+  printf '\r\033[K'
+  die "mongo never became ready — check: docker logs $MONGO_CONTAINER"
+}
+
+report_data() {
+  step "Dataset"
+  local counts
+  counts=$(docker exec "$MONGO_CONTAINER" mongosh helix7 --quiet --eval '
+    const c = n => db.getCollection(n).countDocuments();
+    print([c("receptors"), c("ligands"), c("bioactivities")].join(" "));
+  ' 2>/dev/null | tr -d '\r' || echo "")
+
+  read -r receptors ligands acts <<<"${counts:-0 0 0}"
+  if [ "${receptors:-0}" -gt 0 ] 2>/dev/null; then
+    ok "${receptors} receptors · ${ligands} ligands · ${acts} bioactivities"
+  else
+    warn "database is empty — load it with: ./run etl"
+  fi
+}
+
+install_deps() {
+  step "Node dependencies"
+  if [ ! -d node_modules ]; then
+    warn "node_modules missing — installing (this takes a minute)"
+    npm install
+  fi
+  ok "installed"
+}
+
+start_web() {
+  step "Next.js dev server"
+  printf '  %shttp://localhost:%s%s\n\n' "$bold" "$WEB_PORT" "$reset"
+  exec npm run dev
+}
+
+cmd_start() {
+  detect_compose
+  start_docker
+  start_mongo
+  report_data
+  install_deps
+  start_web
+}
+
+cmd_status() {
+  detect_compose
+  step "Status"
+  docker_up && ok "docker engine: up" || warn "docker engine: down"
+
+  if [ -n "$(docker ps -q -f "name=^${MONGO_CONTAINER}$" 2>/dev/null)" ]; then
+    ok "mongodb: up (localhost:${MONGO_PORT})"
+    report_data
+  else
+    warn "mongodb: down"
+  fi
+
+  if lsof -ti :"$WEB_PORT" >/dev/null 2>&1; then
+    ok "web: something is listening on :${WEB_PORT}"
+  else
+    warn "web: not running"
+  fi
+}
+
+cmd_stop() {
+  detect_compose
+  step "Stopping MongoDB"
+  "${COMPOSE[@]}" stop >/dev/null 2>&1 || true
+  ok "stopped (data volume preserved)"
+  printf '  %sThe Docker VM is left running; stop it with: colima stop%s\n' "$dim" "$reset"
+}
+
+cmd_etl() {
+  detect_compose
+  start_docker
+  start_mongo
+
+  step "ETL pipeline"
+  if [ ! -x etl/.venv/bin/python ]; then
+    warn "creating python venv"
+    python3 -m venv etl/.venv
+    etl/.venv/bin/pip install -q --upgrade pip
+    etl/.venv/bin/pip install -q httpx pymongo tenacity
+  fi
+  ( cd etl && ../etl/.venv/bin/python run_all.py )
+  report_data
+}
+
+ensure_venv() {
+  if [ ! -x etl/.venv/bin/python ]; then
+    warn "creating python venv"
+    python3 -m venv etl/.venv
+    etl/.venv/bin/pip install -q --upgrade pip
+    etl/.venv/bin/pip install -q httpx pymongo tenacity
+  fi
+}
+
+# Scheduled data refresh — safe to run from cron. Logs to etl/logs/ and records
+# the run in the `meta` collection. Passes any extra args through to update.py.
+cmd_update() {
+  detect_compose
+  start_docker
+  start_mongo
+  ensure_venv
+
+  mkdir -p etl/logs
+  local ts log
+  ts="$(date +%Y%m%d-%H%M%S)"
+  log="etl/logs/update-${ts}.log"
+
+  step "Data refresh"
+  printf '  %slogging to %s%s\n' "$dim" "$log" "$reset"
+  shift || true   # drop the "update" arg; forward the rest
+  if ( cd etl && ../etl/.venv/bin/python update.py "$@" ) 2>&1 | tee "$log"; then
+    ok "refresh complete"
+  else
+    die "refresh failed — see $log"
+  fi
+  report_data
+  # prune logs older than 90 days
+  find etl/logs -name 'update-*.log' -mtime +90 -delete 2>/dev/null || true
+}
+
+case "${1:-start}" in
+  start)  cmd_start  ;;
+  status) cmd_status ;;
+  stop)   cmd_stop   ;;
+  etl)    cmd_etl    ;;
+  update) cmd_update "$@" ;;
+  *) echo "usage: ./run [start|status|stop|etl|update]" >&2; exit 2 ;;
+esac

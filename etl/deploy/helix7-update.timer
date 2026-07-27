@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Helix7 data refresh on a schedule
+
+[Timer]
+# 03:30 on the 1st of every month
+OnCalendar=*-*-01 03:30:00
+# if the machine was off at the scheduled time, run at next boot
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

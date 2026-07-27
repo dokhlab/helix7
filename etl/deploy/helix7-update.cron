@@ -1,0 +1,6 @@
+# Helix7 monthly data refresh.
+# Edit the path to your checkout, then install with:  crontab etl/deploy/helix7-update.cron
+#
+# ┌ minute  ┌ hour  ┌ day-of-month  ┌ month  ┌ day-of-week
+# 30        3       1               *        *      → 03:30 on the 1st of each month
+30 3 1 * * cd "/ABSOLUTE/PATH/TO/Helix7/App" && ./run update >> etl/logs/cron.log 2>&1

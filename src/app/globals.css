@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Helix7 design tokens
+ *
+ * Dark-first "instrument panel" aesthetic: near-black field, a single
+ * luminous teal accent for interaction, and a categorical palette keyed
+ * to the seven GPCR classes so colour means the same thing everywhere.
+ * ------------------------------------------------------------------ */
+
+@theme {
+  /* Surfaces — cool near-black, slightly blue so the teal reads as warm. */
+  --color-void: #04060a;
+  --color-abyss: #070b12;
+  --color-surface: #0b111b;
+  --color-surface-2: #101825;
+  --color-surface-3: #16202f;
+  --color-line: #1d2939;
+  --color-line-bright: #2a3a4f;
+
+  /* Text */
+  --color-ink: #e8eef6;
+  --color-ink-muted: #93a3b8;
+  --color-ink-faint: #5f7086;
+
+  /* Accent — the Helix teal. */
+  --color-helix: #2dd4bf;
+  --color-helix-bright: #5eead4;
+  --color-helix-deep: #0f766e;
+  --color-plasma: #8b5cf6;
+  --color-plasma-bright: #a78bfa;
+
+  /* GPCR class palette. Distinguishable on dark; consistent site-wide. */
+  --color-class-a: #2dd4bf;
+  --color-class-b1: #60a5fa;
+  --color-class-b2: #a78bfa;
+  --color-class-c: #fbbf24;
+  --color-class-d1: #f472b6;
+  --color-class-f: #fb7185;
+  --color-class-t2: #a3e635;
+  --color-class-o1: #7c8da3;
+  --color-class-o2: #55657a;
+  --color-class-other: #cbd5e1;
+
+  /* Target development level. */
+  --color-tclin: #34d399;
+  --color-tchem: #38bdf8;
+  --color-tbio: #fbbf24;
+  --color-tdark: #64748b;
+
+  /* Pharmacological action. */
+  --color-agonist: #34d399;
+  --color-partial: #a3e635;
+  --color-antagonist: #f87171;
+  --color-inverse: #fb923c;
+  --color-allosteric: #a78bfa;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  --radius-panel: 14px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* A faint field gradient keeps large dark areas from looking flat. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60rem 40rem at 15% -10%, rgba(45, 212, 191, 0.07), transparent 60%),
+    radial-gradient(50rem 35rem at 95% 0%, rgba(139, 92, 246, 0.06), transparent 55%);
+}
+
+::selection {
+  background: rgba(45, 212, 191, 0.28);
+  color: #fff;
+}
+
+/* Scrollbars — thin and unobtrusive against the dark field. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-bright) transparent;
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-bright);
+  border-radius: 99px;
+  border: 2px solid var(--color-void);
+}
+*::-webkit-scrollbar-thumb:hover { background: #3b4f68; }
+
+:focus-visible {
+  outline: 2px solid var(--color-helix);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Components
+ * ------------------------------------------------------------------ */
+
+@utility panel {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-surface) 92%, transparent),
+    color-mix(in oklab, var(--color-abyss) 96%, transparent)
+  );
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+}
+
+@utility panel-hover {
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+  &:hover {
+    border-color: var(--color-line-bright);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.8);
+  }
+}
+
+@utility mono-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Tabular figures stop numeric columns from jittering as values change. */
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion
+ * ------------------------------------------------------------------ */
+
+@keyframes helix-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes helix-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+@utility animate-rise {
+  animation: helix-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
