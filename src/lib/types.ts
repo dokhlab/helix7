@@ -28,6 +28,7 @@ export type SourceName =
   | "UniProt"
   | "GtoPdb"
   | "ChEMBL"
+  | "PubChem"
   | "HPA"
   | "OpenTargets"
   | "ClinVar"

@@ -19,6 +19,8 @@ STAGES = [
     ("s01_gpcrdb", "GPCRdb receptors, classification, structures"),
     ("s02_hpa", "Human Protein Atlas tissue expression"),
     ("s03_gtopdb", "Guide to Pharmacology ligands and assays"),
+    ("s07_chembl", "ChEMBL bioactivities and ligands"),
+    ("s08_pubchem", "PubChem bioactivities and ligands"),
     ("s04_opentargets", "Open Targets disease associations"),
     ("s05_score", "Development-interest score"),
     ("s06_derive", "Classification tree and global stats"),

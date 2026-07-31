@@ -104,22 +104,30 @@ export default async function DocsPage() {
 
       <Doc id="ligands" title="Ligands & pharmacology">
         <p>
-          Ligand interactions come from the Guide to Pharmacology and are typed
-          by pharmacological action —{" "}
+          Ligand interactions are integrated from three sources: the{" "}
+          <strong>Guide to Pharmacology</strong> (expert-curated, with clean
+          mechanism-of-action typing), <strong>ChEMBL</strong> (comprehensive
+          quantitative medicinal-chemistry data, target-mapped to the human
+          receptor), and <strong>PubChem BioAssay</strong> (additional
+          target-mapped assays and deposited screens). Where a source classifies
+          it, each ligand is typed by pharmacological action —{" "}
           <ActionSwatch color="var(--color-agonist)">agonist</ActionSwatch>,{" "}
           <ActionSwatch color="var(--color-partial)">partial agonist</ActionSwatch>,{" "}
           <ActionSwatch color="var(--color-antagonist)">antagonist</ActionSwatch>,{" "}
           <ActionSwatch color="var(--color-inverse)">inverse agonist</ActionSwatch>,
           and{" "}
           <ActionSwatch color="var(--color-allosteric)">allosteric modulator</ActionSwatch>
-          . Affinities (Ki, IC50, EC50, Kd) are normalised to nanomolar from the
-          published p-scale values, and each measurement links to the PubMed
-          paper it was reported in. The potency strip plot shows every
-          quantitative measurement on the −log₁₀(M) scale, where higher means
-          more potent. The atlas currently holds{" "}
-          {stats ? nf.format(stats.bioactivityCount) : "~8,000"} interaction
-          records across {stats ? nf.format(stats.ligandCount) : "~4,000"}{" "}
-          distinct ligands.
+          . Affinities (Ki, IC50, EC50, Kd) are normalised to nanomolar, and each
+          measurement links to the PubMed paper it was reported in. Because these
+          sources overlap, ligands are de-duplicated across them by InChIKey and
+          name, and equivalent measurements are merged — so counts reflect
+          distinct compounds, not repeated records. The potency strip plot shows
+          every quantitative measurement on the −log₁₀(M) scale, where higher
+          means more potent. The atlas currently holds{" "}
+          {stats ? nf.format(stats.bioactivityCount) : "tens of thousands of"}{" "}
+          interaction records across{" "}
+          {stats ? nf.format(stats.ligandCount) : "thousands of"} distinct
+          ligands.
         </p>
       </Doc>
 

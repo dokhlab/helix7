@@ -122,11 +122,21 @@ export const SOURCES: SourceRecord[] = [
     id: "ChEMBL",
     name: "ChEMBL",
     url: "https://www.ebi.ac.uk/chembl/",
-    role: "Bioactivity measurements and compound annotations",
+    role: "Quantitative ligand bioactivities (Ki/IC50/EC50/Kd) and compounds, target-mapped to human receptors",
     license: "CC BY-SA 4.0",
     citation:
       "Zdrazil B, et al. The ChEMBL Database in 2023. Nucleic Acids Res. 2024;52(D1):D1180–D1192.",
     citationUrl: "https://doi.org/10.1093/nar/gkad1004",
+  },
+  {
+    id: "PubChem",
+    name: "PubChem BioAssay",
+    url: "https://pubchem.ncbi.nlm.nih.gov",
+    role: "Additional target-mapped bioassays and compounds, including deposited high-throughput screens",
+    license: "Public domain",
+    citation:
+      "Kim S, et al. PubChem 2023 update. Nucleic Acids Res. 2023;51(D1):D1373–D1380.",
+    citationUrl: "https://doi.org/10.1093/nar/gkac956",
   },
   {
     id: "PubMed",
