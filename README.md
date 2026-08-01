@@ -82,6 +82,10 @@ Because it builds on ShareAlike datasets, **Helix7 is released under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)**. The data is
 provided for research use, not clinical guidance.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes and the data-source history.
+
 ## Citation
 
 > Helix7: an integrated atlas of the human GPCRome. Dokholyan Laboratory,
