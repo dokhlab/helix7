@@ -13,7 +13,7 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
 MONGO_CONTAINER="helix7-mongo"
-MONGO_PORT="${MONGO_PORT:-27017}"
+MONGO_PORT="${MONGO_PORT:-27018}"
 WEB_PORT="${PORT:-3000}"
 
 bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; yellow=$'\033[33m'

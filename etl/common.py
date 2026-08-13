@@ -21,7 +21,8 @@ OUT_DIR = ETL_DIR / "out"
 CACHE_DIR.mkdir(exist_ok=True)
 OUT_DIR.mkdir(exist_ok=True)
 
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
+# Host 27018 (see docker-compose.yml) avoids a native mongod on 27017.
+MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27018")
 MONGODB_DB = os.environ.get("MONGODB_DB", "helix7")
 
 USER_AGENT = "Helix7-ETL/0.1 (GPCRome atlas; research use)"
