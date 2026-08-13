@@ -5,6 +5,14 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **HPA single-cell expression layer** (`etl/s02b_hpa_singlecell.py`). A
+  cell-resolution complement to tissue RNA: per-cell-type nCPM across ~150 human
+  cell types, coloured by broad cell class. The receptor Expression tab now has
+  a Tissue / Single-cell toggle.
+- **Organ-system summary** on the tissue view and an expandable full tissue
+  list, so finely-subdivided regions (e.g. brain subregions) are never hidden
+  below a top-N cutoff.
+
 - **ChEMBL as a ligand/assay source** (`etl/s07_chembl.py`). Resolves each
   receptor's ChEMBL single‑protein human target from its UniProt accession and
   ingests standardised, pChEMBL‑qualified activities (Ki/IC50/EC50/Kd/AC50),

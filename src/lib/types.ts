@@ -119,6 +119,17 @@ export interface TissueExpression {
   source: SourceName;
 }
 
+/** HPA single-cell type expression — a complementary, cell-resolution layer. */
+export interface SingleCellExpression {
+  cellType: string;
+  /** Broad grouping (Neural, Immune, Epithelial, …) for colour/interpretation. */
+  cellClass?: string;
+  /** Normalised expression (nCPM from HPA single-cell). */
+  value: number;
+  unit: string;
+  source: SourceName;
+}
+
 /* ------------------------------------------------------------------ *
  * Disease and variation
  * ------------------------------------------------------------------ */
@@ -215,6 +226,7 @@ export interface Receptor {
   alphafoldUrl?: string;
   gProteinCoupling: GProteinCoupling[];
   expression: TissueExpression[];
+  singleCell?: SingleCellExpression[];
   organSystems: string[];
   diseases: DiseaseAssociation[];
   mutations: Mutation[];

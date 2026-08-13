@@ -54,77 +54,76 @@ export function BodyMap({ expression }: { expression: TissueExpression[] }) {
     { id: "skin", system: "Integumentary", d: "M100 8 q46 4 46 120 q0 80 -46 96 q-46 -16 -46 -96 q0 -116 46 -120 z" },
   ];
 
+  const Row = ({
+    label,
+    value,
+    system,
+  }: {
+    label: string;
+    value: number;
+    system: string | null;
+  }) => (
+    <div
+      className="flex items-center gap-3"
+      onMouseEnter={() => setHover(system)}
+      onMouseLeave={() => setHover((h) => (h === system ? null : h))}
+    >
+      <span className="w-32 shrink-0 truncate text-xs text-[var(--color-ink-muted)] capitalize">
+        {label}
+      </span>
+      <div className="h-4 flex-1 overflow-hidden rounded bg-[var(--color-surface-3)]">
+        <div
+          className="h-full rounded"
+          style={{
+            width: `${Math.max(1, (value / max) * 100)}%`,
+            background: hover === system ? "var(--color-helix-bright)" : "var(--color-helix)",
+          }}
+        />
+      </div>
+      <span className="numeric w-14 text-right text-xs text-[var(--color-ink)]">
+        {value.toFixed(1)}
+      </span>
+    </div>
+  );
+
   return (
     <div>
       <div className="grid gap-6 md:grid-cols-[minmax(180px,240px)_1fr]">
-        {/* Figure + organ-system summary */}
-        <div>
-          <div className="relative">
-            <svg viewBox="0 0 200 230" className="mx-auto w-full max-w-[240px]">
-              {regions.map((rg) => {
-                const active = hover === rg.system;
-                const fill = rg.system === "Integumentary" ? "var(--color-surface-2)" : shade(rg.system);
-                const common = {
-                  fill,
-                  stroke: active ? "var(--color-helix-bright)" : "var(--color-line)",
-                  strokeWidth: active ? 1.6 : 0.8,
-                  opacity: rg.system === "Integumentary" ? 0.35 : 1,
-                  onMouseEnter: () => setHover(rg.system),
-                  onMouseLeave: () => setHover((h) => (h === rg.system ? null : h)),
-                  style: { cursor: "pointer", transition: "all 150ms" },
-                };
-                return rg.d ? (
-                  <path key={rg.id} d={rg.d} {...common} />
-                ) : (
-                  <circle key={rg.id} cx={rg.cx} cy={rg.cy} r={rg.r} {...common} />
-                );
-              })}
-            </svg>
-            <div className="mt-1 text-center text-xs text-[var(--color-ink-muted)]">
-              {hover ? (
-                <span>
-                  <span className="font-medium text-[var(--color-ink)]">{hover}</span> —
-                  peak {(bySystem.get(hover) ?? 0).toFixed(1)} nTPM
-                </span>
+        {/* Figure */}
+        <div className="relative self-start">
+          <svg viewBox="0 0 200 230" className="mx-auto w-full max-w-[240px]">
+            {regions.map((rg) => {
+              const active = hover === rg.system;
+              const fill = rg.system === "Integumentary" ? "var(--color-surface-2)" : shade(rg.system);
+              const common = {
+                fill,
+                stroke: active ? "var(--color-helix-bright)" : "var(--color-line)",
+                strokeWidth: active ? 1.6 : 0.8,
+                opacity: rg.system === "Integumentary" ? 0.35 : 1,
+                onMouseEnter: () => setHover(rg.system),
+                onMouseLeave: () => setHover((h) => (h === rg.system ? null : h)),
+                style: { cursor: "pointer", transition: "all 150ms" },
+              };
+              return rg.d ? (
+                <path key={rg.id} d={rg.d} {...common} />
               ) : (
-                <span className="text-[var(--color-ink-faint)]">Hover a region or system</span>
-              )}
-            </div>
-          </div>
-
-          {/* Organ-system summary — peak per system, so no system is hidden */}
-          <div className="mt-4">
-            <div className="mono-label mb-2">By organ system · peak nTPM</div>
-            <div className="space-y-1">
-              {systemsSorted.map(([system, val]) => (
-                <div
-                  key={system}
-                  className="flex items-center gap-2"
-                  onMouseEnter={() => setHover(system)}
-                  onMouseLeave={() => setHover(null)}
-                >
-                  <span className="w-24 shrink-0 truncate text-[11px] text-[var(--color-ink-muted)]">
-                    {system}
-                  </span>
-                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-3)]">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.max(3, (val / max) * 100)}%`,
-                        background: hover === system ? "var(--color-helix-bright)" : "var(--color-helix)",
-                      }}
-                    />
-                  </div>
-                  <span className="numeric w-9 text-right text-[11px] text-[var(--color-ink)]">
-                    {val.toFixed(1)}
-                  </span>
-                </div>
-              ))}
-            </div>
+                <circle key={rg.id} cx={rg.cx} cy={rg.cy} r={rg.r} {...common} />
+              );
+            })}
+          </svg>
+          <div className="mt-1 text-center text-xs text-[var(--color-ink-muted)]">
+            {hover ? (
+              <span>
+                <span className="font-medium text-[var(--color-ink)]">{hover}</span> —
+                peak {(bySystem.get(hover) ?? 0).toFixed(1)} nTPM
+              </span>
+            ) : (
+              <span className="text-[var(--color-ink-faint)]">Hover a region or system</span>
+            )}
           </div>
         </div>
 
-        {/* Ranked tissues (expandable to all) */}
+        {/* Right column: top tissues, then organ-system summary (same width) */}
         <div>
           <div className="mb-3 flex items-center justify-between">
             <span className="mono-label">
@@ -139,35 +138,16 @@ export function BodyMap({ expression }: { expression: TissueExpression[] }) {
               </button>
             )}
           </div>
-          <div
-            className={`space-y-1.5 ${showAll ? "max-h-[420px] overflow-y-auto pr-1" : ""}`}
-          >
+          <div className={`space-y-1.5 ${showAll ? "max-h-[420px] overflow-y-auto pr-1" : ""}`}>
             {tissues.map((t) => (
-              <div
-                key={t.tissue}
-                className="flex items-center gap-3"
-                onMouseEnter={() => setHover(t.organSystem ?? null)}
-                onMouseLeave={() => setHover(null)}
-              >
-                <span className="flex w-32 shrink-0 items-center gap-1.5">
-                  <span className="truncate text-xs text-[var(--color-ink-muted)] capitalize">
-                    {t.tissue}
-                  </span>
-                </span>
-                <div className="h-4 flex-1 overflow-hidden rounded bg-[var(--color-surface-3)]">
-                  <div
-                    className="h-full rounded"
-                    style={{
-                      width: `${Math.max(1, (t.value / max) * 100)}%`,
-                      background:
-                        hover === t.organSystem ? "var(--color-helix-bright)" : "var(--color-helix)",
-                    }}
-                  />
-                </div>
-                <span className="numeric w-14 text-right text-xs text-[var(--color-ink)]">
-                  {t.value.toFixed(1)}
-                </span>
-              </div>
+              <Row key={t.tissue} label={t.tissue} value={t.value} system={t.organSystem ?? null} />
+            ))}
+          </div>
+
+          <div className="mono-label mb-2 mt-6">By organ system · peak nTPM</div>
+          <div className="space-y-1.5">
+            {systemsSorted.map(([system, val]) => (
+              <Row key={system} label={system} value={val} system={system} />
             ))}
           </div>
         </div>

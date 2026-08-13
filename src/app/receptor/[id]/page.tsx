@@ -5,7 +5,7 @@ import { getBioactivities, getReceptor } from "@/lib/data";
 import { CLASS_LABEL } from "@/lib/constants";
 import { ClassBadge, TdlBadge, SectionTitle, EmptyNote, OrphanBadge, ProvenanceStrip } from "@/components/ui";
 import { ScoreGauge } from "@/components/ScoreGauge";
-import { BodyMap } from "@/components/BodyMap";
+import { ExpressionPanel } from "@/components/ExpressionPanel";
 import { StructureViewer } from "@/components/StructureViewer";
 import { PharmacologyPanel } from "@/components/PharmacologyPanel";
 import { Tabs, type Tab } from "@/components/Tabs";
@@ -107,10 +107,13 @@ export default async function ReceptorPage({
       content: receptor.expression?.length ? (
         <div className="panel p-5">
           <SectionTitle
-            eyebrow="Human Protein Atlas · consensus RNA"
+            eyebrow="Human Protein Atlas"
             title="Body distribution"
           />
-          <BodyMap expression={receptor.expression} />
+          <ExpressionPanel
+            expression={receptor.expression}
+            singleCell={receptor.singleCell ?? []}
+          />
         </div>
       ) : (
         <EmptyNote>No tissue expression data available for {receptor.gene}.</EmptyNote>
