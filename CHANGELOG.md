@@ -43,6 +43,8 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ### Fixed
 - 3D structure viewer now falls back to mmCIF for entries without a legacy
   `.pdb` file (e.g. 7B6W), which previously failed to render.
+- Docs → GPCR Biology: the PAM mechanism card now spells out "Positive
+  allosteric modulator" instead of abbreviating "mod.".
 
 ### Changed
 - Data coverage expanded from **4,117 → 128,044 distinct ligands** and

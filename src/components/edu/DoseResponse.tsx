@@ -59,7 +59,7 @@ const MECHANISMS: Mechanism[] = [
   },
   {
     id: "pam",
-    label: "Positive allosteric mod.",
+    label: "Positive allosteric modulator",
     color: "var(--color-allosteric)",
     blurb:
       "Binds a separate allosteric site and amplifies the response to the endogenous agonist — increasing potency and/or efficacy without activating the receptor on its own.",
