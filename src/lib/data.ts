@@ -136,7 +136,10 @@ export interface BioactivityGroup {
 
 export async function getBioactivities(
   receptorId: string,
-  limit = 400,
+  // Load the receptor's full ligand set (the busiest receptor has ~1,400 rows)
+  // so the client can search, filter and paginate over everything, and the
+  // per-action counts are exact rather than reflecting a truncated sample.
+  limit = 5000,
 ): Promise<{ groups: BioactivityGroup[]; total: number }> {
   const db = await getDb();
   const coll = db.collection<Bioactivity>("bioactivities");

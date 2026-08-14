@@ -5,6 +5,11 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **Pharmacology table search, filters and pagination.** A search box (ligand
+  name), an assay-type selector, and a binding-affinity (nM) range filter sit
+  above the ligand table; results are paginated at 100 rows per page with
+  Previous / Next and a go-to-page control. The full ligand set is now loaded
+  (previously capped at 400), so the per-action counts are exact.
 - **Resizable Pharmacology table columns** — drag the divider on any column
   header in the receptor Pharmacology tab to widen it, so long ligand names
   (e.g. IUPAC chemical names) can be read without truncation.
