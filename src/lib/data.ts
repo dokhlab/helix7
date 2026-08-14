@@ -215,6 +215,32 @@ export interface SearchHit {
   tdl?: string;
 }
 
+const GREEK: Record<string, string> = {
+  α: "alpha", β: "beta", γ: "gamma", δ: "delta", ε: "epsilon", ζ: "zeta",
+  η: "eta", θ: "theta", ι: "iota", κ: "kappa", λ: "lambda", μ: "mu", ν: "nu",
+  ξ: "xi", ο: "omicron", π: "pi", ρ: "rho", σ: "sigma", ς: "sigma", τ: "tau",
+  υ: "upsilon", φ: "phi", χ: "chi", ψ: "psi", ω: "omega",
+};
+
+/**
+ * Normalise a name/query for search: NFKC (flattens subscripts like ₂→2), Greek
+ * letters spelled out (β→beta), lowercased, non-alphanumerics collapsed to
+ * single spaces. MUST mirror `normalize()` in etl/s10_synonyms.py so the query
+ * and the stored `searchNorm` field agree.
+ */
+export function normalizeSearch(s: string): string {
+  if (!s) return "";
+  let out = "";
+  for (const ch of s.normalize("NFKC")) {
+    out += GREEK[ch] ?? GREEK[ch.toLowerCase()] ?? ch;
+  }
+  return out
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function searchReceptors(
   term: string,
   limit = 10,
@@ -223,36 +249,46 @@ export async function searchReceptors(
   if (!t) return [];
   const db = await getDb();
   const coll = db.collection<Receptor>("receptors");
+  const projection = {
+    gene: 1,
+    name: 1,
+    "classification.classCode": 1,
+    "devInterest.tdl": 1,
+    "devInterest.score": 1,
+  } as const;
 
-  // Prefer a fast prefix match on the gene symbol, then fall back to full text.
+  // 1) Fast, high-confidence: gene-symbol prefix (e.g. "adrb" → ADRB1/2/3).
   const prefix = await coll
-    .find(
-      { gene: { $regex: `^${escapeRegex(t)}`, $options: "i" } },
-      { projection: { gene: 1, name: 1, "classification.classCode": 1, "devInterest.tdl": 1 } },
-    )
+    .find({ gene: { $regex: `^${escapeRegex(t)}`, $options: "i" } }, { projection })
     .limit(limit)
     .toArray();
 
+  // 2) Broad: match any biological/common name variant. Every query word must
+  //    appear (as a word prefix) in the receptor's normalised name set, OR the
+  //    whole spaceless query is a substring of the condensed form — so
+  //    "beta 2 adrenergic", "β2 adrenoceptor" and "adrenaline receptor" all hit.
   let hits = prefix;
   if (hits.length < limit) {
-    const text = await coll
-      .find(
-        { $text: { $search: t } },
-        {
-          projection: {
-            gene: 1,
-            name: 1,
-            "classification.classCode": 1,
-            "devInterest.tdl": 1,
-            score: { $meta: "textScore" },
+    const norm = normalizeSearch(t);
+    const tokens = norm.split(" ").filter(Boolean);
+    const condensed = norm.replace(/ /g, "");
+    if (tokens.length) {
+      const broad = await coll
+        .find(
+          {
+            $or: [
+              { $and: tokens.map((tok) => ({ searchNorm: { $regex: `\\b${escapeRegex(tok)}` } })) },
+              { searchCondensed: { $regex: escapeRegex(condensed) } },
+            ],
           },
-        },
-      )
-      .sort({ score: { $meta: "textScore" } })
-      .limit(limit)
-      .toArray();
-    const seen = new Set(hits.map((h) => h._id));
-    hits = [...hits, ...text.filter((h) => !seen.has(h._id))].slice(0, limit);
+          { projection },
+        )
+        .sort({ "devInterest.score": -1 })
+        .limit(limit * 3)
+        .toArray();
+      const seen = new Set(hits.map((h) => h._id));
+      hits = [...hits, ...broad.filter((h) => !seen.has(h._id))].slice(0, limit);
+    }
   }
 
   return hits.map((h) => ({

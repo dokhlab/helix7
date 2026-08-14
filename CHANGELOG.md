@@ -5,6 +5,12 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **Name-variant receptor search.** The global search box now matches gene
+  symbols and their aliases, the systematic GPCRdb name, and the biological and
+  common names curated by UniProt (e.g. "beta-2 adrenergic receptor",
+  "serotonin 2A", "mu opioid"). Queries are normalised so Greek letters and
+  subscripts ("β₂"), spacing ("beta 2" / "beta2") and condensed forms ("5ht2a")
+  all resolve. New ETL stage `etl/s10_synonyms.py`.
 - **Pharmacology table search, filters and pagination.** A search box (ligand
   name), an assay-type selector, and a binding-affinity (nM) range filter sit
   above the ligand table; results are paginated at 100 rows per page with

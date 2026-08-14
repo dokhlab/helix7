@@ -39,12 +39,15 @@ def create_indexes(db) -> None:
     db.receptors.create_index([("devInterest.tdl", ASCENDING)])
     db.receptors.create_index([("organSystems", ASCENDING)])
     db.receptors.create_index([("structureCount", DESCENDING)])
-    # Weighted text index powers the global search box.
+    # Weighted text index powers the global search box; searchTerms carries the
+    # UniProt biological/common names (see s10_synonyms.py).
     db.receptors.create_index(
-        [("gene", TEXT), ("name", TEXT), ("geneSynonyms", TEXT), ("uniprot", TEXT)],
-        weights={"gene": 10, "name": 5, "geneSynonyms": 3, "uniprot": 2},
+        [("gene", TEXT), ("name", TEXT), ("geneSynonyms", TEXT),
+         ("searchTerms", TEXT), ("uniprot", TEXT)],
+        weights={"gene": 10, "name": 5, "geneSynonyms": 4, "searchTerms": 3, "uniprot": 2},
         name="receptor_search",
     )
+    db.receptors.create_index([("searchCondensed", ASCENDING)])
 
     db.bioactivities.create_index([("receptorId", ASCENDING), ("pValue", DESCENDING)])
     db.bioactivities.create_index([("ligandId", ASCENDING)])

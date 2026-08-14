@@ -207,6 +207,12 @@ export interface Receptor {
   gene: string;
   geneSynonyms: string[];
   uniprot: string;
+  /** Biological + common names (UniProt) for the search box; see s10_synonyms. */
+  searchTerms?: string[];
+  /** Normalised, space-joined search words (Greek spelled out, subscripts flat). */
+  searchNorm?: string;
+  /** searchNorm with spaces removed, so "beta2" matches "beta 2". */
+  searchCondensed?: string;
   /** Display name with HTML subscripts stripped, e.g. "D2 receptor". */
   name: string;
   /** GPCRdb name retaining <sub> markup. */

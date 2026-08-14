@@ -24,6 +24,7 @@ STAGES = [
     ("s08_pubchem", "PubChem bioactivities and ligands"),
     ("s04_opentargets", "Open Targets disease associations"),
     ("s09_coupling", "Primary G-protein coupling (curated)"),
+    ("s10_synonyms", "Searchable name synonyms (UniProt)"),
     ("s05_score", "Development-interest score"),
     ("s06_derive", "Classification tree and global stats"),
     ("s90_load", "Load into MongoDB"),
