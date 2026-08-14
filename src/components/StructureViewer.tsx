@@ -70,14 +70,20 @@ export function StructureViewer({
         await load3Dmol();
         if (cancelled || !hostRef.current || !window.$3Dmol) return;
 
-        // Fetch structure text: PDB from RCSB, else AlphaFold CIF.
+        // Fetch structure text: RCSB for experimental, else AlphaFold CIF.
         let data: string;
         let format: string;
         if (pdbId) {
-          const res = await fetch(`https://files.rcsb.org/download/${pdbId}.pdb`);
-          if (!res.ok) throw new Error("pdb fetch failed");
-          data = await res.text();
+          // Many newer/large entries have no legacy .pdb file — mmCIF is always
+          // available — so try .pdb first, then fall back to .cif.
+          let res = await fetch(`https://files.rcsb.org/download/${pdbId}.pdb`);
           format = "pdb";
+          if (!res.ok) {
+            res = await fetch(`https://files.rcsb.org/download/${pdbId}.cif`);
+            format = "cif";
+          }
+          if (!res.ok) throw new Error("structure fetch failed");
+          data = await res.text();
           setSource(`PDB ${pdbId}`);
         } else if (alphafoldUrl) {
           const res = await fetch(alphafoldUrl);

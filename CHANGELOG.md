@@ -5,6 +5,10 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **Primary G-protein coupling** (`etl/s09_coupling.py`) — curated canonical
+  transducer (Gs/Gi-Go/Gq-G11/G12-13) for the well-characterised receptor
+  families; the Signalling panel now shows real coupling with a GPCRdb link
+  instead of a placeholder.
 - **HPA single-cell expression layer** (`etl/s02b_hpa_singlecell.py`). A
   cell-resolution complement to tissue RNA: per-cell-type nCPM across ~150 human
   cell types, coloured by broad cell class. The receptor Expression tab now has
@@ -27,6 +31,10 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
   markdown source of truth (with embedded figures).
 - Provenance de‑duplication in the derive step; per‑record source attribution
   now lists GPCRdb · HPA · GtoPdb · Open Targets · ChEMBL · PubChem.
+
+### Fixed
+- 3D structure viewer now falls back to mmCIF for entries without a legacy
+  `.pdb` file (e.g. 7B6W), which previously failed to render.
 
 ### Changed
 - Data coverage expanded from **4,117 → 128,044 distinct ligands** and

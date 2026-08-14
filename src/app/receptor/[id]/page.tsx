@@ -223,26 +223,52 @@ function OverviewTab({
         <div className="panel p-5">
           <SectionTitle eyebrow="Signalling" title="Signal transduction" />
           {coupling.length ? (
-            <div className="flex flex-wrap gap-2">
-              {coupling.map((g) => (
-                <span
-                  key={g.family}
-                  className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-2)] px-3 py-1.5 text-sm"
+            <>
+              <p className="mb-2.5 text-xs text-[var(--color-ink-faint)]">
+                Primary G-protein transducer(s):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {coupling.map((g) => (
+                  <span
+                    key={g.family}
+                    className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-2)] px-3 py-1.5 text-sm"
+                  >
+                    {g.family}
+                    {g.primary && (
+                      <span className="ml-1.5 text-[10px] text-[var(--color-helix)]">
+                        primary
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-[var(--color-ink-faint)]">
+                Canonical coupling; some receptors also signal through secondary
+                transducers and β-arrestin. See{" "}
+                <a
+                  href={`https://gpcrdb.org/signprot/couplings#${receptor.gene}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--color-helix)] hover:underline"
                 >
-                  {g.family}
-                  {g.primary && (
-                    <span className="ml-1.5 text-[10px] text-[var(--color-helix)]">
-                      primary
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
+                  GPCRdb couplings
+                </a>{" "}
+                for full data.
+              </p>
+            </>
           ) : (
-            <p className="text-sm text-[var(--color-ink-muted)]">
-              G-protein coupling not annotated in the current dataset. Class{" "}
-              {receptor.classification.classCode} receptors typically couple via
-              their family&apos;s canonical pathway.
+            <p className="text-sm leading-relaxed text-[var(--color-ink-muted)]">
+              Primary G-protein coupling is not curated for {receptor.gene} in
+              Helix7. See{" "}
+              <a
+                href={`https://gpcrdb.org/signprot/couplings#${receptor.gene}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--color-helix)] hover:underline"
+              >
+                GPCRdb couplings
+              </a>{" "}
+              for transducer data on this receptor.
             </p>
           )}
         </div>
