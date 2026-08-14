@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ACTION_COLOR, ACTION_ORDER, formatAffinity } from "@/lib/constants";
 import type { Bioactivity } from "@/lib/types";
 
@@ -8,6 +8,54 @@ interface Group {
   action: string;
   count: number;
   items: Bioactivity[];
+}
+
+const COLUMNS = [
+  { key: "ligand", label: "Ligand", align: "left", width: 260, min: 120 },
+  { key: "action", label: "Action", align: "left", width: 150, min: 90 },
+  { key: "assay", label: "Assay", align: "left", width: 130, min: 70 },
+  { key: "affinity", label: "Affinity", align: "right", width: 130, min: 80 },
+  { key: "ref", label: "Ref", align: "right", width: 110, min: 70 },
+] as const;
+
+/** Draggable column widths for the ligand table (persisted in component state). */
+function useColumnWidths() {
+  const [widths, setWidths] = useState<number[]>(() => COLUMNS.map((c) => c.width));
+  const drag = useRef<{ index: number; startX: number; startW: number } | null>(null);
+
+  const onPointerMove = useCallback((e: PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const next = Math.max(COLUMNS[d.index].min, d.startW + (e.clientX - d.startX));
+    setWidths((w) => {
+      const copy = [...w];
+      copy[d.index] = next;
+      return copy;
+    });
+  }, []);
+
+  const onPointerUp = useCallback(() => {
+    drag.current = null;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+  }, [onPointerMove]);
+
+  const startResize = useCallback(
+    (index: number, e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      drag.current = { index, startX: e.clientX, startW: widths[index] };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    },
+    [widths, onPointerMove, onPointerUp],
+  );
+
+  return { widths, startResize };
 }
 
 /**
@@ -24,6 +72,8 @@ export function PharmacologyPanel({
 }) {
   const actions = groups.map((g) => g.action);
   const [filter, setFilter] = useState<string | null>(null);
+  const { widths, startResize } = useColumnWidths();
+  const tableWidth = widths.reduce((a, b) => a + b, 0);
 
   const all = useMemo(
     () => groups.flatMap((g) => g.items),
@@ -105,15 +155,43 @@ export function PharmacologyPanel({
 
       {/* Ligand table */}
       <div className="panel overflow-hidden">
-        <div className="max-h-[520px] overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-[var(--color-surface)]">
+        <div className="max-h-[520px] overflow-auto">
+          <table
+            className="text-sm"
+            style={{ width: tableWidth, minWidth: "100%", tableLayout: "fixed" }}
+          >
+            <colgroup>
+              {COLUMNS.map((c, i) => (
+                <col key={c.key} style={{ width: widths[i] }} />
+              ))}
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-[var(--color-surface)]">
               <tr className="border-b border-[var(--color-line)] text-left">
-                <th className="mono-label py-2 pl-4 font-normal">Ligand</th>
-                <th className="mono-label py-2 font-normal">Action</th>
-                <th className="mono-label py-2 font-normal">Assay</th>
-                <th className="mono-label py-2 text-right font-normal">Affinity</th>
-                <th className="mono-label py-2 pr-4 text-right font-normal">Ref</th>
+                {COLUMNS.map((c, i) => (
+                  <th
+                    key={c.key}
+                    className={`mono-label relative py-2 font-normal ${
+                      c.align === "right" ? "text-right" : ""
+                    } ${i === 0 ? "pl-4" : ""} ${
+                      i === COLUMNS.length - 1 ? "pr-4" : ""
+                    }`}
+                  >
+                    {c.label}
+                    {i < COLUMNS.length - 1 && (
+                      <span
+                        onPointerDown={(e) => startResize(i, e)}
+                        onDoubleClick={(e) => e.preventDefault()}
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label={`Resize ${c.label} column`}
+                        title="Drag to resize"
+                        className="absolute -right-1 top-0 z-20 flex h-full w-2 cursor-col-resize touch-none items-stretch justify-center"
+                      >
+                        <span className="my-1 w-px bg-[var(--color-line)] transition-colors hover:bg-[var(--color-helix)]" />
+                      </span>
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

@@ -5,6 +5,9 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **Resizable Pharmacology table columns** — drag the divider on any column
+  header in the receptor Pharmacology tab to widen it, so long ligand names
+  (e.g. IUPAC chemical names) can be read without truncation.
 - **Primary G-protein coupling** (`etl/s09_coupling.py`) — curated canonical
   transducer (Gs/Gi-Go/Gq-G11/G12-13) for the well-characterised receptor
   families; the Signalling panel now shows real coupling with a GPCRdb link
