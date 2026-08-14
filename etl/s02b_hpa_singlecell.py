@@ -28,8 +28,10 @@ BULK.mkdir(parents=True, exist_ok=True)
 ARCHIVE = BULK / "rna_single_cell_type.tsv.zip"
 RETRIEVED = dt.datetime.now(dt.timezone.utc).isoformat()
 
-# Keep the most-expressed cell types per receptor to stay bounded and useful.
-MAX_CELL_TYPES = 40
+# Keep every cell type with detectable expression (the full HPA panel is ~150),
+# so low-but-present populations (e.g. neurons for a mostly-peripheral receptor)
+# are never hidden below a cutoff.
+MAX_CELL_TYPES = 160
 
 PROVENANCE = {
     "source": "HPA",

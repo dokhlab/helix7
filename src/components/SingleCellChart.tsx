@@ -20,11 +20,19 @@ const CLASS_COLOR: Record<string, string> = {
  */
 export function SingleCellChart({ cells }: { cells: SingleCellExpression[] }) {
   const [showAll, setShowAll] = useState(false);
-  const { sorted, max, classes } = useMemo(() => {
+  const { sorted, max, classes, byClass } = useMemo(() => {
     const sorted = [...cells].sort((a, b) => b.value - a.value);
     const max = Math.max(1, ...cells.map((c) => c.value));
     const classes = [...new Set(sorted.map((c) => c.cellClass ?? "Other"))];
-    return { sorted, max, classes };
+    // Peak per cell class, so low-but-present populations (e.g. neurons) are
+    // always visible even when individual cell types rank far down the list.
+    const peak = new Map<string, number>();
+    for (const c of cells) {
+      const k = c.cellClass ?? "Other";
+      peak.set(k, Math.max(peak.get(k) ?? 0, c.value));
+    }
+    const byClass = [...peak.entries()].sort((a, b) => b[1] - a[1]);
+    return { sorted, max, classes, byClass };
   }, [cells]);
 
   const shown = showAll ? sorted : sorted.slice(0, 15);
@@ -61,6 +69,30 @@ export function SingleCellChart({ cells }: { cells: SingleCellExpression[] }) {
               </div>
               <span className="numeric w-14 text-right text-xs text-[var(--color-ink)]">
                 {c.value.toFixed(1)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* By cell class — peak per class, so no class is hidden */}
+      <div className="mono-label mb-2 mt-6">By cell class · peak nCPM</div>
+      <div className="space-y-1.5">
+        {byClass.map(([cls, val]) => {
+          const color = CLASS_COLOR[cls] ?? "var(--color-helix)";
+          return (
+            <div key={cls} className="flex items-center gap-3">
+              <span className="w-40 shrink-0 truncate text-xs text-[var(--color-ink-muted)]">
+                {cls}
+              </span>
+              <div className="h-4 flex-1 overflow-hidden rounded bg-[var(--color-surface-3)]">
+                <div
+                  className="h-full rounded"
+                  style={{ width: `${Math.max(1, (val / max) * 100)}%`, background: color }}
+                />
+              </div>
+              <span className="numeric w-14 text-right text-xs text-[var(--color-ink)]">
+                {val.toFixed(1)}
               </span>
             </div>
           );
