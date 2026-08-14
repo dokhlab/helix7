@@ -24,3 +24,6 @@ __pycache__/
 
 # Manuscript (kept out of the public code repo)
 paper/
+
+# logo source art (regenerate transparent assets from this)
+helix7-logo-source.png

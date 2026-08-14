@@ -174,43 +174,20 @@ async function SiteFooter() {
 }
 
 /**
- * Helix7 mark — a top-down view of the seven-transmembrane helix bundle that
- * defines every GPCR: seven helices ringed around the central ligand pocket.
- * Kept in sync with /icon.svg.
+ * Helix7 mark — the coiled-ribbon "b7" logo on a transparent ground so it sits
+ * cleanly on the dark chrome. The white backdrop of the source art is knocked
+ * out; the raster lives at /helix7-logo.png (favicon: src/app/icon.png). `size`
+ * is the rendered height in px; width follows the logo's aspect ratio.
  */
 export function HelixMark({ size = 24 }: { size?: number }) {
-  const cx = 12;
-  const cy = 11.6;
-  const r = 6.4;
-  const helices = Array.from({ length: 7 }, (_, i) => {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 7;
-    return {
-      x: cx + Math.cos(a) * r,
-      y: cy + Math.sin(a) * r,
-      o: 0.72 + 0.28 * Math.cos(a - -Math.PI / 2) * 0.5 + 0.14,
-    };
-  });
   return (
-    <svg
-      width={size}
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/helix7-logo.png"
+      alt="Helix7"
       height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
+      style={{ height: size, width: "auto" }}
       className="shrink-0"
-    >
-      {helices.map((h, i) => (
-        <circle key={i} cx={h.x} cy={h.y} r="2" fill="var(--color-helix)" opacity={h.o} />
-      ))}
-      <circle
-        cx={cx}
-        cy={cy}
-        r="2.3"
-        fill="none"
-        stroke="var(--color-plasma-bright)"
-        strokeWidth="0.9"
-      />
-      <circle cx={cx} cy={cy} r="0.7" fill="var(--color-plasma-bright)" />
-    </svg>
+    />
   );
 }
