@@ -87,7 +87,11 @@ export async function listReceptors(
   if (q.organSystem) filter.organSystems = q.organSystem;
   if (q.hasStructure) filter.hasExperimentalStructure = true;
   if (q.orphanOnly) filter.isOrphan = true;
-  if (!q.includeOlfactory) filter.isOlfactory = false;
+  // Olfactory receptors are hidden by default, but not when the user has
+  // explicitly asked for an olfactory (odorant) class — otherwise the filter
+  // would be self-contradictory and always return nothing.
+  const olfactoryClass = q.classCode === "O1" || q.classCode === "O2";
+  if (!q.includeOlfactory && !olfactoryClass) filter.isOlfactory = false;
   if (q.search) filter.$text = { $search: q.search };
 
   const sortMap: Record<string, Record<string, 1 | -1>> = {

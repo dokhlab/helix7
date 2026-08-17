@@ -16,8 +16,8 @@ const DESCRIPTIONS: Record<string, string> = {
   C: "Dimeric receptors with large Venus-flytrap ligand domains — metabotropic glutamate, GABA-B, calcium-sensing, and taste-1 receptors.",
   F: "Frizzled and Smoothened receptors transducing Wnt and Hedgehog signalling. Central to development and oncology.",
   T2: "Bitter taste receptors, expressed in the tongue and, surprisingly, throughout the body.",
-  O1: "Fish-like odorant receptors — a small ancestral group.",
-  O2: "The tetrapod odorant receptors — the single largest gene family in the genome.",
+  O1: "Human class I odorant receptors (the OR51/52/56 families) — the ancestral “fish-like” clade humans share with aquatic vertebrates. A small group, but all human genes.",
+  O2: "Human class II (“tetrapod”) odorant receptors — the single largest gene family in the human genome.",
 };
 
 export default async function ClassesPage() {

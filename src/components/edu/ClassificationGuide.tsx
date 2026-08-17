@@ -55,14 +55,15 @@ const CLASS_INFO: {
     code: "O1",
     af: "—",
     grafs: "Olfactory",
-    senses: "Fish-like odorant receptors — a small, ancestral group.",
+    senses:
+      "Human class I odorant receptors — the ancestral “fish-like” clade (OR51/52/56 families). All human genes.",
   },
   {
     code: "O2",
     af: "—",
     grafs: "Olfactory",
     senses:
-      "Tetrapod odorant receptors — the single largest gene family in the human genome.",
+      "Human class II (“tetrapod”) odorant receptors — the single largest gene family in the human genome.",
   },
 ];
 

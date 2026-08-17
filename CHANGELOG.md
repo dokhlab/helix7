@@ -47,6 +47,13 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
   now lists GPCRdb · HPA · GtoPdb · Open Targets · ChEMBL · PubChem.
 
 ### Fixed
+- Browsing by the Odorant classes (O1/O2) no longer returns "No receptors
+  match": olfactory receptors are hidden by default, but that exclusion is now
+  skipped when the user explicitly selects an olfactory class.
+- Renamed class O1 from the misleading "Odorant (fish)" to "Odorant (class I)"
+  and O2 to "Odorant (class II)", clarifying in the class descriptions that
+  these are human class I ("fish-like", OR51/52/56) and class II ("tetrapod")
+  odorant receptors — not fish genes.
 - 3D structure viewer now falls back to mmCIF for entries without a legacy
   `.pdb` file (e.g. 7B6W), which previously failed to render.
 - Docs → GPCR Biology: the PAM mechanism card now spells out "Positive

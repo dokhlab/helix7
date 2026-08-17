@@ -13,8 +13,8 @@ export const CLASSES: {
   { code: "C", short: "C", label: "Glutamate", color: "var(--color-class-c)" },
   { code: "F", short: "F", label: "Frizzled", color: "var(--color-class-f)" },
   { code: "T2", short: "T2", label: "Taste 2", color: "var(--color-class-t2)" },
-  { code: "O1", short: "O1", label: "Odorant (fish)", color: "var(--color-class-o1)" },
-  { code: "O2", short: "O2", label: "Odorant", color: "var(--color-class-o2)" },
+  { code: "O1", short: "O1", label: "Odorant (class I)", color: "var(--color-class-o1)" },
+  { code: "O2", short: "O2", label: "Odorant (class II)", color: "var(--color-class-o2)" },
   { code: "D1", short: "D1", label: "Fungal pheromone", color: "var(--color-class-d1)" },
   { code: "Other", short: "—", label: "Other", color: "var(--color-class-other)" },
 ];
