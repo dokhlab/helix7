@@ -34,8 +34,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="relative min-h-screen">
+    <html lang="en" suppressHydrationWarning>
+      {/* suppressHydrationWarning: browser extensions (Grammarly, etc.) inject
+          attributes on <body> before React hydrates, which would otherwise
+          trip a benign hydration mismatch warning. */}
+      <body className="relative min-h-screen" suppressHydrationWarning>
         <div className="relative z-10 flex min-h-screen flex-col">
           <SiteHeader />
           <main className="flex-1">{children}</main>

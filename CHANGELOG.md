@@ -47,6 +47,9 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
   now lists GPCRdb · HPA · GtoPdb · Open Targets · ChEMBL · PubChem.
 
 ### Fixed
+- Silenced a benign React hydration warning caused by browser extensions
+  (e.g. Grammarly) injecting attributes on `<body>` before hydration, via
+  `suppressHydrationWarning` on the root `<html>`/`<body>`.
 - Browsing by the Odorant classes (O1/O2) no longer returns "No receptors
   match": olfactory receptors are hidden by default, but that exclusion is now
   skipped when the user explicitly selects an olfactory class.
