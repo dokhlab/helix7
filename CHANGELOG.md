@@ -5,6 +5,14 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **Fuzzy, typo-tolerant search.** Receptor search now scores every receptor in
+  memory (Levenshtein + token/prefix matching with colloquial-name expansion),
+  so misspellings ("dopmaine", "seratonin", "hisstamine") and lay terms
+  ("adrenaline receptor", "beta blocker", "cannabis") resolve to the right GPCRs.
+- **"Not a GPCR" guidance.** Queries for ionotropic namesakes that aren't in the
+  GPCRome — 5-HT₃, nicotinic ACh, GABA-A, NMDA/AMPA/kainate, glycine, P2X —
+  return an explanation of why they're absent and which GPCR relatives to search
+  instead, shown inline in the search box.
 - **Name-variant receptor search.** The global search box now matches gene
   symbols and their aliases, the systematic GPCRdb name, and the biological and
   common names curated by UniProt (e.g. "beta-2 adrenergic receptor",

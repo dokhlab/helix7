@@ -245,67 +245,223 @@ export function normalizeSearch(s: string): string {
     .trim();
 }
 
+// --- Fuzzy in-memory search index -----------------------------------------
+// The GPCRome is small (805 receptors), so we keep a normalised search index in
+// memory and score every receptor against the query. This gives typo tolerance
+// and partial/variant matching that a plain regex/`$text` query cannot.
+
+interface SearchDoc {
+  _id: string;
+  gene: string;
+  name: string;
+  classCode: string;
+  tdl?: string;
+  score: number;
+  geneLc: string;
+  condensed: string;
+  tokens: string[];
+}
+
+let searchIndex: SearchDoc[] | null = null;
+let searchIndexAt = 0;
+const SEARCH_INDEX_TTL = 5 * 60 * 1000;
+
+async function getSearchIndex(): Promise<SearchDoc[]> {
+  if (searchIndex && Date.now() - searchIndexAt < SEARCH_INDEX_TTL) return searchIndex;
+  const db = await getDb();
+  const rows = await db
+    .collection<Receptor>("receptors")
+    .find(
+      {},
+      {
+        projection: {
+          gene: 1,
+          name: 1,
+          "classification.classCode": 1,
+          "devInterest.tdl": 1,
+          "devInterest.score": 1,
+          searchNorm: 1,
+          searchCondensed: 1,
+        },
+      },
+    )
+    .toArray();
+  searchIndex = rows.map((r) => {
+    const norm = r.searchNorm ?? normalizeSearch(`${r.name ?? ""} ${r.gene ?? ""}`);
+    return {
+      _id: r._id,
+      gene: r.gene,
+      name: r.name,
+      classCode: r.classification?.classCode ?? "",
+      tdl: r.devInterest?.tdl,
+      score: r.devInterest?.score ?? 0,
+      geneLc: (r.gene ?? "").toLowerCase(),
+      condensed: r.searchCondensed ?? norm.replace(/ /g, ""),
+      tokens: norm.split(" ").filter(Boolean),
+    };
+  });
+  searchIndexAt = Date.now();
+  return searchIndex;
+}
+
+/** Colloquial ligand/receptor names → the terms UniProt/GPCRdb actually use. */
+const QUERY_EXPAND: Record<string, string[]> = {
+  adrenaline: ["adrenergic", "adrenoceptor"],
+  epinephrine: ["adrenergic", "adrenoceptor"],
+  noradrenaline: ["adrenergic", "adrenoceptor"],
+  norepinephrine: ["adrenergic", "adrenoceptor"],
+  acetylcholine: ["muscarinic", "cholinergic"],
+  serotonin: ["hydroxytryptamine", "ht"],
+  cannabis: ["cannabinoid"],
+  marijuana: ["cannabinoid"],
+  weed: ["cannabinoid"],
+  thc: ["cannabinoid"],
+  opiate: ["opioid"],
+  morphine: ["opioid"],
+  melatonin: ["melatonin"],
+};
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  let curr = new Array<number>(n + 1);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+/** Similarity of a query token to a receptor token, 0..1 (1 = exact/prefix). */
+function tokenSim(q: string, t: string): number {
+  if (t === q) return 1;
+  if (q.length <= 2) return 0; // 2-char tokens (e.g. "2a") must match exactly
+  if (t.startsWith(q)) return 0.92;
+  if (q.length >= 3 && t.includes(q)) return 0.78;
+  if (q.length >= 4 && q.startsWith(t) && t.length >= 3) return 0.72;
+  // Edit-distance fuzzing (typos) only for longer tokens — a single edit on a
+  // 3–4 char token is too loose and matches unrelated genes.
+  if (q.length < 5 || t.length < 4) return 0;
+  return 1 - levenshtein(q, t) / Math.max(q.length, t.length);
+}
+
+function scoreDoc(doc: SearchDoc, groups: string[][], qCond: string): number {
+  let score = 0;
+  if (qCond.length >= 2) {
+    if (doc.geneLc === qCond) score += 1000;
+    else if (doc.geneLc.startsWith(qCond)) score += 500;
+    else if (qCond.length >= 3 && doc.geneLc.includes(qCond)) score += 160;
+  }
+  if (qCond.length >= 3 && doc.condensed.includes(qCond)) score += 220;
+
+  let matched = 0;
+  for (const alts of groups) {
+    let best = 0;
+    for (const qt of alts) {
+      if (qt.length < 2) continue;
+      for (const rt of doc.tokens) {
+        const s = tokenSim(qt, rt);
+        if (s > best) best = s;
+        if (best === 1) break;
+      }
+      if (best === 1) break;
+    }
+    if (best >= 0.7) {
+      score += best * 100;
+      matched++;
+    } else if (best >= 0.55) {
+      score += best * 35;
+    }
+  }
+  // A result must actually match at least one query word well; otherwise a bare
+  // condensed-substring coincidence (e.g. "5ht3" grazing an olfactory gene)
+  // would leak weak, confusing hits.
+  if (matched === 0) return 0;
+  if (groups.length) score *= 0.35 + 0.65 * (matched / groups.length);
+  score += Math.min(doc.score, 100) * 0.01; // dev-interest tiebreak
+  return score;
+}
+
 export async function searchReceptors(
   term: string,
   limit = 10,
 ): Promise<SearchHit[]> {
-  const t = term.trim();
-  if (!t) return [];
-  const db = await getDb();
-  const coll = db.collection<Receptor>("receptors");
-  const projection = {
-    gene: 1,
-    name: 1,
-    "classification.classCode": 1,
-    "devInterest.tdl": 1,
-    "devInterest.score": 1,
-  } as const;
+  const norm = normalizeSearch(term);
+  if (!norm) return [];
+  const qCond = norm.replace(/ /g, "");
+  // Each query word becomes a group of accepted alternatives (self + synonyms).
+  const groups = norm
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => [w, ...(QUERY_EXPAND[w] ?? [])]);
 
-  // 1) Fast, high-confidence: gene-symbol prefix (e.g. "adrb" → ADRB1/2/3).
-  const prefix = await coll
-    .find({ gene: { $regex: `^${escapeRegex(t)}`, $options: "i" } }, { projection })
-    .limit(limit)
-    .toArray();
-
-  // 2) Broad: match any biological/common name variant. Every query word must
-  //    appear (as a word prefix) in the receptor's normalised name set, OR the
-  //    whole spaceless query is a substring of the condensed form — so
-  //    "beta 2 adrenergic", "β2 adrenoceptor" and "adrenaline receptor" all hit.
-  let hits = prefix;
-  if (hits.length < limit) {
-    const norm = normalizeSearch(t);
-    const tokens = norm.split(" ").filter(Boolean);
-    const condensed = norm.replace(/ /g, "");
-    if (tokens.length) {
-      const broad = await coll
-        .find(
-          {
-            $or: [
-              { $and: tokens.map((tok) => ({ searchNorm: { $regex: `\\b${escapeRegex(tok)}` } })) },
-              { searchCondensed: { $regex: escapeRegex(condensed) } },
-            ],
-          },
-          { projection },
-        )
-        .sort({ "devInterest.score": -1 })
-        .limit(limit * 3)
-        .toArray();
-      const seen = new Set(hits.map((h) => h._id));
-      hits = [...hits, ...broad.filter((h) => !seen.has(h._id))].slice(0, limit);
-    }
-  }
-
-  return hits.map((h) => ({
-    _id: h._id,
-    gene: h.gene,
-    name: h.name,
-    classCode: h.classification?.classCode ?? "",
-    tdl: h.devInterest?.tdl,
-  }));
+  const index = await getSearchIndex();
+  return index
+    .map((d) => ({ d, s: scoreDoc(d, groups, qCond) }))
+    .filter((x) => x.s >= 50)
+    .sort((a, b) => b.s - a.s || b.d.score - a.d.score)
+    .slice(0, limit)
+    .map(({ d }) => ({
+      _id: d._id,
+      gene: d.gene,
+      name: d.name,
+      classCode: d.classCode,
+      tdl: d.tdl,
+    }));
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// --- Non-GPCR namesakes ----------------------------------------------------
+// The atlas is the GPCRome, so ionotropic receptors that share a ligand with a
+// GPCR (5-HT3, nicotinic ACh, GABA-A, NMDA/AMPA…) are legitimately absent. When
+// a query looks like one of these, explain why and point to the GPCR relatives.
+
+const NON_GPCR_NOTES: { test: RegExp; note: string }[] = [
+  {
+    test: /(5ht3|htr3|serotonin3)/,
+    note:
+      "The 5-HT₃ receptor is a ligand-gated ion channel (Cys-loop family), not a GPCR, so it isn't part of the GPCRome. The other serotonin receptors — 5-HT₁, 5-HT₂, 5-HT₄, 5-HT₅, 5-HT₆ and 5-HT₇ — are all GPCRs and are included.",
+  },
+  {
+    test: /(nicotinic|nachr|chrn[ab]|chrng|chrnd|chrne)/,
+    note:
+      "Nicotinic acetylcholine receptors are ligand-gated ion channels, not GPCRs. The muscarinic acetylcholine receptors (CHRM1–CHRM5) are the GPCRs — search “muscarinic”.",
+  },
+  {
+    test: /(gabaa|gabra|gabrb|gabrg|gabac|gabrr)/,
+    note:
+      "GABA-A / GABA-C receptors are ligand-gated chloride channels, not GPCRs. GABA-B (GABBR1/GABBR2) is the metabotropic GPCR and is included — search “GABA-B”.",
+  },
+  {
+    test: /(nmda|grin\d|ampa|gria\d|glur|kainate|grik\d|ionotropicglutamate)/,
+    note:
+      "NMDA, AMPA and kainate receptors are ionotropic glutamate channels, not GPCRs. The metabotropic glutamate receptors (mGlu / GRM1–GRM8) are the GPCRs — search “metabotropic glutamate”.",
+  },
+  {
+    test: /(glycinereceptor|glra\d|glrb)/,
+    note: "Glycine receptors are ligand-gated chloride channels, not GPCRs, so they aren't part of the GPCRome.",
+  },
+  {
+    test: /(p2x|p2rx\d)/,
+    note:
+      "P2X receptors are ATP-gated ion channels, not GPCRs. The P2Y receptors (P2RY…) are the GPCRs and are included — search “P2Y”.",
+  },
+];
+
+/** An explanatory note when the query names a non-GPCR receptor, else null. */
+export function nonGpcrNote(term: string): string | null {
+  const condensed = normalizeSearch(term).replace(/ /g, "");
+  if (condensed.length < 3) return null;
+  for (const { test, note } of NON_GPCR_NOTES) {
+    if (test.test(condensed)) return note;
+  }
+  return null;
 }
 
 /** Strip Mongo/BSON internals so results are plain JSON for the client. */

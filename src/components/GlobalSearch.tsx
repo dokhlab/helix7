@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Info } from "lucide-react";
 import { CLASS_COLOR } from "@/lib/constants";
 
 interface Hit {
@@ -17,6 +17,7 @@ export function GlobalSearch() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -26,6 +27,7 @@ export function GlobalSearch() {
   useEffect(() => {
     if (!q.trim()) {
       setHits([]);
+      setNote(null);
       return;
     }
     const ctrl = new AbortController();
@@ -36,6 +38,7 @@ export function GlobalSearch() {
         });
         const data = await res.json();
         setHits(data.hits ?? []);
+        setNote(data.note ?? null);
         setActive(0);
         setOpen(true);
       } catch {
@@ -76,6 +79,10 @@ export function GlobalSearch() {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setOpen(false);
+      return;
+    }
     if (!open || !hits.length) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -110,8 +117,22 @@ export function GlobalSearch() {
         </kbd>
       </div>
 
-      {open && hits.length > 0 && (
+      {open && (hits.length > 0 || note) && (
         <div className="panel absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden py-1 shadow-2xl">
+          {note && (
+            <div className="flex items-start gap-2 border-b border-[var(--color-line)] px-3 py-2.5 text-xs leading-relaxed text-[var(--color-ink-muted)]">
+              <Info
+                size={14}
+                className="mt-0.5 shrink-0 text-[var(--color-helix)]"
+              />
+              <span>{note}</span>
+            </div>
+          )}
+          {note && hits.length === 0 && (
+            <div className="px-3 py-2 text-xs text-[var(--color-ink-faint)]">
+              No GPCR by that name in the atlas.
+            </div>
+          )}
           {hits.map((h, i) => (
             <button
               key={h._id}
