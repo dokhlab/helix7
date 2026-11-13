@@ -5,10 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-# This release is the live Helix7 v3 MariaDB deployment.
-User=jwang
-WorkingDirectory=/home/html/sites/helix7-v3-stage
-ExecStart=/home/html/sites/helix7-v3-stage/run update
+# --- edit these two for your server ---
+User=helix7
+WorkingDirectory=/opt/helix7
+# --------------------------------------
+ExecStart=/opt/helix7/run update
 # a refresh with fresh PubMed counts takes a few minutes; cap generously
 TimeoutStartSec=3600
 Nice=10

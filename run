@@ -1,21 +1,41 @@
 #!/usr/bin/env bash
 #
-# Helix7 — local helper and MariaDB ETL entry point.
+# Helix7 — local helper and ETL entry point (MariaDB).
 #
-#   ./run           start the local development stack
+#   ./run           start the local MariaDB and the Next.js dev server
 #   ./run status    show what is currently up
-#   ./run stop      stop the dev server's MongoDB (leaves the Docker VM alone)
+#   ./run stop      stop the local MariaDB (data volume kept)
 #   ./run etl       run the full data pipeline into MariaDB
+#   ./run update    scheduled refresh: clear the cache, rebuild, record the run
+#
+# Settings come from run.env if present (a server's own settings, git-ignored),
+# otherwise .env.local, which is created from .env.example on first use.
 #
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
-MONGO_CONTAINER="helix7-mongo"
-MONGO_PORT="${MONGO_PORT:-27017}"
+if [ -f run.env ]; then
+  CONFIG=run.env
+else
+  [ -f .env.local ] || cp .env.example .env.local
+  CONFIG=.env.local
+fi
+set -a
+# shellcheck disable=SC1090
+. "./$CONFIG"
+set +a
+
 WEB_PORT="${PORT:-3000}"
-HELIX7_DATABASE="${HELIX7_DBNAME:-helix7_v3}"
+DB_NAME="${HELIX7_DBNAME:-helix7}"
+DB_CONTAINER="${HELIX7_DB_CONTAINER:-helix7-db}"
+ETL_NETWORK="${HELIX7_ETL_NETWORK:-helix7_default}"
+ETL_DBHOST="${HELIX7_ETL_DBHOST:-db}"
+ETL_DBPORT="${HELIX7_ETL_DBPORT:-3306}"
+ETL_ENV_FILE="${HELIX7_ETL_ENV_FILE:-$CONFIG}"
+# Only manage the database container when it is this project's own.
+LOCAL_DB=$([ "$DB_CONTAINER" = helix7-db ] && echo 1 || echo 0)
 
 bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; yellow=$'\033[33m'
 red=$'\033[31m'; cyan=$'\033[36m'; reset=$'\033[0m'
@@ -56,33 +76,38 @@ start_docker() {
   die "Docker is not running. Start Docker Desktop (or Colima) and re-run."
 }
 
-start_mongo() {
-  step "MongoDB"
-  if [ -n "$(docker ps -q -f "name=^${MONGO_CONTAINER}$" 2>/dev/null)" ]; then
+db_running() { [ -n "$(docker ps -q -f "name=^${DB_CONTAINER}$" 2>/dev/null)" ]; }
+
+start_db() {
+  step "MariaDB"
+  if [ "$LOCAL_DB" = 0 ]; then
+    db_running && ok "using ${DB_CONTAINER}" || die "database container ${DB_CONTAINER} is not running"
+    return
+  fi
+  if db_running; then
     ok "container already running"
   else
     # No --remove-orphans: other projects may share this Docker daemon.
-    "${COMPOSE[@]}" up -d >/dev/null 2>&1 || die "failed to start the mongo container"
+    "${COMPOSE[@]}" up -d db >/dev/null 2>&1 || die "failed to start the database container"
     ok "container started"
   fi
 
-  printf '  %swaiting for mongo to accept connections…%s' "$dim" "$reset"
-  for _ in $(seq 1 45); do
-    if docker exec "$MONGO_CONTAINER" mongosh --quiet \
-         --eval 'db.runCommand({ping:1}).ok' >/dev/null 2>&1; then
-      printf '\r\033[K'; ok "ready on localhost:${MONGO_PORT}"
+  printf '  %swaiting for MariaDB to accept connections…%s' "$dim" "$reset"
+  for _ in $(seq 1 60); do
+    if [ "$(docker inspect -f '{{.State.Health.Status}}' "$DB_CONTAINER" 2>/dev/null)" = healthy ]; then
+      printf '\r\033[K'; ok "ready on ${DBHOST:-127.0.0.1}:${DBPORT:-3307} (database ${DB_NAME})"
       return
     fi
-    printf '.'; sleep 1
+    printf '.'; sleep 2
   done
   printf '\r\033[K'
-  die "mongo never became ready — check: docker logs $MONGO_CONTAINER"
+  die "MariaDB never became ready — check: docker logs $DB_CONTAINER"
 }
 
 report_data() {
   step "Dataset"
   local counts
-  counts=$(docker exec -e REPORT_DB="$HELIX7_DATABASE" confs-db-1 sh -lc \
+  counts=$(docker exec -e REPORT_DB="$DB_NAME" "$DB_CONTAINER" sh -c \
     'mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" -NBe \
       "SELECT (SELECT COUNT(*) FROM \`${REPORT_DB}\`.receptors), \
               (SELECT COUNT(*) FROM \`${REPORT_DB}\`.ligands), \
@@ -115,7 +140,7 @@ start_web() {
 cmd_start() {
   detect_compose
   start_docker
-  start_mongo
+  start_db
   report_data
   install_deps
   start_web
@@ -126,14 +151,15 @@ cmd_status() {
   step "Status"
   docker_up && ok "docker engine: up" || warn "docker engine: down"
 
-  if [ -n "$(docker ps -q -f "name=^${MONGO_CONTAINER}$" 2>/dev/null)" ]; then
-    ok "mongodb: up (localhost:${MONGO_PORT})"
+  if db_running; then
+    ok "mariadb: up (${DB_CONTAINER}, database ${DB_NAME})"
     report_data
   else
-    warn "mongodb: down"
+    warn "mariadb: down (${DB_CONTAINER})"
   fi
 
-  if lsof -ti :"$WEB_PORT" >/dev/null 2>&1; then
+  # bash /dev/tcp probe: works where lsof is not installed.
+  if (exec 3<>"/dev/tcp/127.0.0.1/${WEB_PORT}") 2>/dev/null; then
     ok "web: something is listening on :${WEB_PORT}"
   else
     warn "web: not running"
@@ -142,8 +168,12 @@ cmd_status() {
 
 cmd_stop() {
   detect_compose
-  step "Stopping MongoDB"
-  "${COMPOSE[@]}" stop >/dev/null 2>&1 || true
+  if [ "$LOCAL_DB" = 0 ]; then
+    warn "${DB_CONTAINER} is not this project's container — leaving it running"
+    return
+  fi
+  step "Stopping MariaDB"
+  "${COMPOSE[@]}" stop db >/dev/null 2>&1 || true
   ok "stopped (data volume preserved)"
   printf '  %sThe Docker VM is left running; stop it with: colima stop%s\n' "$dim" "$reset"
 }
@@ -151,12 +181,14 @@ cmd_stop() {
 run_etl_container() {
   local target="$1"
   shift
+  # The ETL runs in a throwaway Python container on the database's network,
+  # so the host needs only Docker. -e values override the env file's.
   docker run --rm \
-    --network dokhlab-net \
-    --env-file /home/html/confs/dokhlab.env \
-    -e DBHOST=db \
-    -e DBPORT=3306 \
-    -e HELIX7_DBNAME="$HELIX7_DATABASE" \
+    --network "$ETL_NETWORK" \
+    --env-file "$ETL_ENV_FILE" \
+    -e DBHOST="$ETL_DBHOST" \
+    -e DBPORT="$ETL_DBPORT" \
+    -e HELIX7_DBNAME="$DB_NAME" \
     -v "$APP_DIR:/app:z" \
     -w /app/etl \
     python:3.13-slim \
@@ -165,15 +197,19 @@ run_etl_container() {
 }
 
 cmd_etl() {
+  detect_compose
   start_docker
+  start_db
   step "ETL pipeline"
   run_etl_container run_all.py
 }
 
 # Scheduled data refresh — safe to run from cron. Logs to etl/logs/ and records
-# the run in the `meta` collection. Passes any extra args through to update.py.
+# the run in the `dataset_meta` table. Passes any extra args through to update.py.
 cmd_update() {
+  detect_compose
   start_docker
+  start_db
 
   mkdir -p etl/logs
   local ts log

@@ -201,7 +201,7 @@ export interface DevInterest {
  * ------------------------------------------------------------------ */
 
 export interface Receptor {
-  /** GPCRdb entry name, e.g. "drd2_human". Used as the Mongo _id and URL slug. */
+  /** GPCRdb entry name, e.g. "drd2_human". Used as the database id and URL slug. */
   _id: string;
   entryName: string;
   gene: string;
