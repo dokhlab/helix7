@@ -4,8 +4,9 @@ The atlas is rebuilt from its upstream sources by `etl/update.py`, which:
 
 1. clears the fetch cache so every source is re-downloaded fresh,
 2. runs the full ETL pipeline (`run_all.py`),
-3. records the run — timestamp, status, row counts — in the MongoDB `meta`
-   collection, which the site reads to show **"Data updated …"** in the footer.
+3. records the run (timestamp, status, row counts) in the MariaDB
+   `dataset_meta` table, which the site reads to show **"Data updated …"** in
+   the footer.
 
 Run it by hand any time with:
 
@@ -51,9 +52,11 @@ launchctl load ~/Library/LaunchAgents/com.helix7.update.plist
 ## Option D — GitHub Actions (no server; refreshes a hosted DB)
 
 `.github/workflows/data-refresh.yml` runs on a monthly `schedule` (and on
-manual `workflow_dispatch`). Set a `MONGODB_URI` repository **secret** pointing
-at your production database (e.g. MongoDB Atlas). This is the right choice when
-the app is deployed on Vercel + Atlas rather than a self-managed box.
+manual `workflow_dispatch`). Set repository **secrets** `HELIX7_DBHOST`,
+`HELIX7_DBPORT`, `HELIX7_DBNAME`, `HELIX7_DBUSER` and `HELIX7_DBPASS` for a
+MariaDB/MySQL server reachable from GitHub's runners. This is the right choice
+when the app is hosted with a managed database rather than on a self-managed
+box.
 
 ---
 

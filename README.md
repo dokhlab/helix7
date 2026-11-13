@@ -38,28 +38,55 @@ App/
 │   └── lib/             data access, types, source registry
 ├── etl/                 Python data-integration pipeline (staged ETL)
 │   ├── s01…s90_*.py     one stage per source, then derive + load
-│   ├── update.py        scheduled refresh (records runs in the `meta` collection)
+│   ├── schema.sql       MariaDB tables (applied when the local database is created)
+│   ├── update.py        scheduled refresh (records each run in `dataset_meta`)
 │   └── deploy/          cron / systemd / launchd / GitHub Actions schedules
-├── docker-compose.yml   local MongoDB
+├── docker-compose.yml   local MariaDB
+├── .env.example         database settings for the app and ./run
 └── run                  helper: ./run [start|status|stop|etl|update]
 ```
 
-Data is stored in **MongoDB**; the frontend reads it server-side.
+Data is stored in **MariaDB**; the frontend reads it server-side through a
+`mysql2` pool (`src/lib/mongo.ts`, named for its MongoDB past).
 
 ## Quick start
 
-Requirements: Node 20+, Python 3.11+, and Docker (for local MongoDB).
+Requirements: Node 20+ and Docker. The ETL runs in a throwaway Python
+container, so no local Python is needed.
 
 ```bash
-# 1. install and start MongoDB + the dev server
+# 1. start MariaDB and the dev server
 npm install
-./run            # starts Docker/MongoDB and `next dev` on :3000
+./run            # creates .env.local, starts MariaDB on :3307, `next dev` on :3000
 
-# 2. build the dataset (first run downloads from the sources; then loads MongoDB)
-./run etl
+# 2. build the dataset (first run downloads from the sources; then loads MariaDB)
+./run etl        # in a second terminal
 ```
 
 Open http://localhost:3000.
+
+`./run` copies `.env.example` to `.env.local` on first use. The defaults match
+the MariaDB container in `docker-compose.yml` (database, user and password
+`helix7`, host port 3307); edit `.env.local` to point the app somewhere else.
+The tables are created from `etl/schema.sql` when the database volume is first
+initialised. To start again from an empty database, run
+`docker compose down -v`.
+
+### Deploying against an existing MariaDB
+
+Point the app at the server's database with `DBHOST`, `DBPORT`,
+`HELIX7_DBNAME`, `HELIX7_DBUSER` and `HELIX7_DBPASS` (the last two fall back
+to `DBUSER`/`DBPASS`), and create the tables once from `etl/schema.sql`. To run
+the ETL there, put a `run.env` next to `run` (git-ignored; it takes precedence
+over `.env.local`):
+
+```bash
+HELIX7_DBNAME=helix7
+HELIX7_DB_CONTAINER=my-mariadb        # existing container: ./run will not start/stop it
+HELIX7_ETL_NETWORK=my-docker-network  # network that container is on
+HELIX7_ETL_DBHOST=my-mariadb          # its host name on that network
+HELIX7_ETL_ENV_FILE=/path/to/db.env   # file with HELIX7_DBUSER/HELIX7_DBPASS (or DBUSER/DBPASS)
+```
 
 ### Refreshing the data
 

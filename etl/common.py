@@ -1,4 +1,4 @@
-"""Shared helpers for the Helix7 ETL: cached HTTP, Mongo access, text utils."""
+"""Shared helpers for the Helix7 ETL: cached HTTP, MariaDB access, text utils."""
 
 from __future__ import annotations
 

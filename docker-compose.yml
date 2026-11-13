@@ -1,13 +1,31 @@
+# Local MariaDB for development. `./run` starts it; the tables are created from
+# etl/schema.sql the first time the data volume is initialised.
+name: helix7
+
 services:
-  mongo:
-    image: mongo:7
-    container_name: helix7-mongo
+  db:
+    image: mariadb:11.4
+    container_name: helix7-db
     restart: unless-stopped
+    # The ETL writes each table in one multi-row INSERT; the 16 MB default is too small.
+    command: ["--max-allowed-packet=1G"]
+    environment:
+      # Local development only: throwaway credentials, never used in production.
+      MYSQL_ROOT_PASSWORD: ${HELIX7_DB_ROOT_PASSWORD:-helix7-root}
+      MARIADB_DATABASE: ${HELIX7_DBNAME:-helix7}
+      MARIADB_USER: ${HELIX7_DBUSER:-helix7}
+      MARIADB_PASSWORD: ${HELIX7_DBPASS:-helix7}
     ports:
-      - "27017:27017"
+      # Host 3307 so a native MySQL/MariaDB on 3306 does not clash.
+      - "${DBPORT:-3307}:3306"
     volumes:
-      - helix7-mongo-data:/data/db
-    command: ["--wiredTigerCacheSizeGB", "1"]
+      - helix7-db-data:/var/lib/mysql
+      - ./etl/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
 
 volumes:
-  helix7-mongo-data:
+  helix7-db-data:

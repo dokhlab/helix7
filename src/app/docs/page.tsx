@@ -223,7 +223,7 @@ export default async function DocsPage() {
           the Human Protein Atlas, adds ligands and assays from the Guide to
           Pharmacology, layers disease associations from Open Targets, computes
           literature counts from PubMed, derives the development-interest score,
-          and loads everything into MongoDB with a text index for search. Every
+          and loads everything into MariaDB with a full-text index for search. Every
           network response is cached, so the build is reproducible and re-runs
           are cheap. The data is refreshed periodically as the sources update.
         </p>

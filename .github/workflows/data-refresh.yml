@@ -1,8 +1,8 @@
 name: Helix7 data refresh
 
-# Refreshes the atlas from its upstream sources into a hosted MongoDB.
-# Use this when the app is deployed (e.g. Vercel + MongoDB Atlas) rather than
-# on a self-managed server. Set a MONGODB_URI repository secret first.
+# Refreshes the atlas from its upstream sources into a hosted MariaDB/MySQL.
+# Use this when the app is deployed with a managed database rather than on a
+# self-managed server. Set the HELIX7_DB* repository secrets first.
 
 on:
   schedule:
@@ -19,29 +19,49 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # Without database secrets there is nothing to refresh: skip instead of failing.
+      - name: Check database secrets
+        id: config
+        env:
+          DBHOST: ${{ secrets.HELIX7_DBHOST }}
+        run: |
+          if [ -z "$DBHOST" ]; then
+            echo "::notice::HELIX7_DB* secrets are not set; skipping the data refresh."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
 
       - uses: actions/setup-python@v5
+        if: steps.config.outputs.ready == 'true'
         with:
           python-version: "3.12"
 
       - name: Install ETL dependencies
-        working-directory: App/etl
+        if: steps.config.outputs.ready == 'true'
+        working-directory: etl
         run: |
           python -m pip install --upgrade pip
-          pip install httpx pymongo tenacity
+          pip install httpx mysql-connector-python tenacity
 
       - name: Run refresh
-        working-directory: App/etl
+        if: steps.config.outputs.ready == 'true'
+        working-directory: etl
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          MONGODB_DB: helix7
+          DBHOST: ${{ secrets.HELIX7_DBHOST }}
+          DBPORT: ${{ secrets.HELIX7_DBPORT }}
+          HELIX7_DBNAME: ${{ secrets.HELIX7_DBNAME }}
+          HELIX7_DBUSER: ${{ secrets.HELIX7_DBUSER }}
+          HELIX7_DBPASS: ${{ secrets.HELIX7_DBPASS }}
         run: python update.py
 
       - name: Upload run log
-        if: always()
+        if: always() && steps.config.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: refresh-log
-          path: App/etl/out/*.json
+          path: etl/out/*.json
           if-no-files-found: ignore
