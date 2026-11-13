@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { getMeta } from "@/lib/data";
@@ -61,7 +62,14 @@ function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-6 px-5">
         <div className="flex items-center gap-3">
           <Link href="/" aria-label="Helix7 home" className="flex items-center">
-            <HelixMark size={40} />
+            <Image
+              src="/h7-new-logo.png"
+              alt="Helix7"
+              width={40}
+              height={30}
+              className="shrink-0"
+              priority
+            />
           </Link>
           <span className="flex flex-col justify-center leading-none">
             <Link href="/" className="text-[19px] font-semibold leading-tight tracking-tight">
@@ -111,7 +119,13 @@ async function SiteFooter() {
       <div className="mx-auto max-w-[1400px] px-5 py-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2.5">
-            <HelixMark />
+            <Image
+              src="/h7-new-logo.png"
+              alt="Helix7"
+              width={28}
+              height={21}
+              className="shrink-0"
+            />
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold">
                 Helix<span className="text-[var(--color-helix)]">7</span>
@@ -173,24 +187,5 @@ async function SiteFooter() {
         </div>
       </div>
     </footer>
-  );
-}
-
-/**
- * Helix7 mark — the coiled-ribbon "b7" logo on a transparent ground so it sits
- * cleanly on the dark chrome. The white backdrop of the source art is knocked
- * out; the raster lives at /helix7-logo.png (favicon: src/app/icon.png). `size`
- * is the rendered height in px; width follows the logo's aspect ratio.
- */
-export function HelixMark({ size = 24 }: { size?: number }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/helix7-logo.png"
-      alt="Helix7"
-      height={size}
-      style={{ height: size, width: "auto" }}
-      className="shrink-0"
-    />
   );
 }

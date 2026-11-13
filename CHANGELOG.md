@@ -5,6 +5,29 @@ All notable changes to Helix7 are recorded here. Dates are ISO‑8601.
 ## [Unreleased]
 
 ### Added
+- **Phylogeny tree search by gene or name.** Autocomplete over gene symbols,
+  previous symbols and receptor names/synonyms ("dopamine receptor", "mu
+  opioid", "serotonin 2a", "hypocretin"); every match is listed, several genes
+  can be highlighted at once, a family can be highlighted in one click, and the
+  selection is kept in the URL (`/tree?genes=ADRB2,DRD2`). Unknown terms say
+  they are not a human GPCR, with the non-GPCR notes below where they apply.
+- **Tree redesign.** Class names curved along a coloured outer ring (no
+  clipping), gene callouts fanned out with leader lines, lineage drawn for every
+  highlighted receptor, and a centre readout of the focused receptor.
+- **Structure viewer controls.** Stop/spin (still by default under
+  reduced-motion), reset view, rainbow vs. per-chain colouring, ligand toggle.
+  Only GPCRdb's curated ligand is drawn, named in the corner label; lipids,
+  detergents, glycans, water and crystallisation additives stay hidden
+  (`src/lib/hetGroups.ts`).
+
+### Changed
+- **Database: MongoDB → MariaDB** for the deployment at helix7.dokhlab.org
+  (`src/lib/mongo.ts` now opens a mysql2 pool; `etl/schema.sql`; `etl/s90_load.py`
+  loads MariaDB). Connection settings come from `DBHOST`/`DBPORT`/`HELIX7_DB*`.
+- Fuzzy search moved to `src/lib/fuzzySearch.ts` (pure, shared with the tree
+  search) and reads its index from MariaDB; behaviour unchanged.
+- New "h7" logo (`public/h7-new-logo.png`, favicon `src/app/icon.png`).
+
 - **Fuzzy, typo-tolerant search.** Receptor search now scores every receptor in
   memory (Levenshtein + token/prefix matching with colloquial-name expansion),
   so misspellings ("dopmaine", "seratonin", "hisstamine") and lay terms

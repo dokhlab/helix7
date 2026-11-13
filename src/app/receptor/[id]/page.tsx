@@ -58,6 +58,7 @@ export default async function ReceptorPage({
               pdbId={bestStructure?.pdbId}
               alphafoldUrl={receptor.alphafoldUrl}
               gene={receptor.gene}
+              ligands={bestStructure?.ligands}
             />
             <p className="mt-2 text-xs text-[var(--color-ink-faint)]">
               {bestStructure
