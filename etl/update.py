@@ -28,8 +28,13 @@ COUNT_COLLECTIONS = ["receptors", "ligands", "bioactivities"]
 SOURCE_LABELS = [
     "GPCRdb",
     "Human Protein Atlas",
+    "HPA single-cell",
     "Guide to PHARMACOLOGY",
+    "Curated G-protein coupling",
     "Open Targets",
+    "ChEMBL",
+    "PubChem",
+    "UniProt",
     "PubMed",
 ]
 
@@ -61,7 +66,13 @@ def record_run(status: str, started: dt.datetime, duration: float, error: str | 
     """Write the run outcome to the `meta` collection (id: 'dataset')."""
     try:
         db = get_db()
-        counts = {c: db[c].count_documents({}) for c in COUNT_COLLECTIONS}
+        cursor = db.cursor()
+        counts = {}
+        for table in COUNT_COLLECTIONS:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            counts[table] = cursor.fetchone()[0]
+        cursor.close()
+        db.close()
     except Exception as exc:  # noqa: BLE001
         print(f"  ! could not record run (DB unreachable): {exc}")
         return
@@ -75,22 +86,39 @@ def record_run(status: str, started: dt.datetime, duration: float, error: str | 
         "error": error,
     }
 
-    db.meta.update_one(
-        {"_id": "dataset"},
-        {
-            "$set": {
-                "lastUpdated": entry["finishedAt"],
-                "lastStatus": status,
-                "lastDurationSec": entry["durationSec"],
-                "counts": counts,
-                "sources": SOURCE_LABELS,
-            },
-            # keep the trailing 24 runs
-            "$push": {"history": {"$each": [entry], "$slice": -24}},
-            "$setOnInsert": {"_id": "dataset"},
-        },
-        upsert=True,
-    )
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT payload_json FROM dataset_meta WHERE id = 'dataset'")
+        old = cursor.fetchone()
+        history = []
+        if old:
+            import json
+            try:
+                history = json.loads(old["payload_json"]).get("history", [])
+            except (TypeError, ValueError):
+                history = []
+        history = (history + [entry])[-24:]
+        payload = {
+            "lastUpdated": entry["finishedAt"],
+            "lastStatus": status,
+            "lastDurationSec": entry["durationSec"],
+            "counts": counts,
+            "sources": SOURCE_LABELS,
+            "history": history,
+        }
+        import json
+        cursor.execute(
+            "INSERT INTO dataset_meta (id, payload_json) VALUES (%s, %s) "
+            "ON DUPLICATE KEY UPDATE payload_json = VALUES(payload_json)",
+            ("dataset", json.dumps(payload, ensure_ascii=False, separators=(",", ":"))),
+        )
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ! could not write dataset metadata: {exc}")
+        return
     print(f"· recorded run in meta: {status}, {counts}")
 
 

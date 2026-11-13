@@ -4,8 +4,7 @@ services:
     container_name: helix7-mongo
     restart: unless-stopped
     ports:
-      # Host 27018 to avoid clashing with a native mongod on 27017.
-      - "27018:27017"
+      - "27017:27017"
     volumes:
       - helix7-mongo-data:/data/db
     command: ["--wiredTigerCacheSizeGB", "1"]

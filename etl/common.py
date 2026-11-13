@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from pymongo import MongoClient
-from pymongo.database import Database
+import mysql.connector
 
 ETL_DIR = Path(__file__).resolve().parent
 CACHE_DIR = ETL_DIR / "cache"
@@ -21,9 +20,11 @@ OUT_DIR = ETL_DIR / "out"
 CACHE_DIR.mkdir(exist_ok=True)
 OUT_DIR.mkdir(exist_ok=True)
 
-# Host 27018 (see docker-compose.yml) avoids a native mongod on 27017.
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27018")
-MONGODB_DB = os.environ.get("MONGODB_DB", "helix7")
+MYSQL_HOST = os.environ.get("DBHOST", "db")
+MYSQL_PORT = int(os.environ.get("DBPORT", "3306"))
+MYSQL_DATABASE = os.environ.get("HELIX7_DBNAME", "helix7")
+MYSQL_USER = os.environ.get("HELIX7_DBUSER", os.environ.get("DBUSER", ""))
+MYSQL_PASSWORD = os.environ.get("HELIX7_DBPASS", os.environ.get("DBPASS", ""))
 
 USER_AGENT = "Helix7-ETL/0.1 (GPCRome atlas; research use)"
 
@@ -31,8 +32,15 @@ USER_AGENT = "Helix7-ETL/0.1 (GPCRome atlas; research use)"
 DEFAULT_DELAY = 0.15
 
 
-def get_db() -> Database:
-    return MongoClient(MONGODB_URI, serverSelectionTimeoutMS=8000)[MONGODB_DB]
+def get_db():
+    return mysql.connector.connect(
+        host=MYSQL_HOST,
+        port=MYSQL_PORT,
+        user=MYSQL_USER,
+        password=MYSQL_PASSWORD,
+        database=MYSQL_DATABASE,
+        connection_timeout=8,
+    )
 
 
 def _cache_path(url: str, params: dict | None) -> Path:

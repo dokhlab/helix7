@@ -23,11 +23,11 @@ STAGES = [
     ("s07_chembl", "ChEMBL bioactivities and ligands"),
     ("s08_pubchem", "PubChem bioactivities and ligands"),
     ("s04_opentargets", "Open Targets disease associations"),
-    ("s09_coupling", "Primary G-protein coupling (curated)"),
-    ("s10_synonyms", "Searchable name synonyms (UniProt)"),
     ("s05_score", "Development-interest score"),
     ("s06_derive", "Classification tree and global stats"),
-    ("s90_load", "Load into MongoDB"),
+    ("s09_coupling", "Curated primary G-protein coupling"),
+    ("s10_synonyms", "UniProt biological and common name synonyms"),
+    ("s90_load", "Load into MariaDB"),
 ]
 
 

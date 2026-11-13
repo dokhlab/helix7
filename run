@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Helix7 — start every service needed for local development.
+# Helix7 — local helper and MariaDB ETL entry point.
 #
-#   ./run           start Docker VM, MongoDB, and the Next.js dev server
+#   ./run           start the local development stack
 #   ./run status    show what is currently up
 #   ./run stop      stop the dev server's MongoDB (leaves the Docker VM alone)
-#   ./run etl       run the full data pipeline into MongoDB
+#   ./run etl       run the full data pipeline into MariaDB
 #
 set -euo pipefail
 
@@ -13,8 +13,9 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
 MONGO_CONTAINER="helix7-mongo"
-MONGO_PORT="${MONGO_PORT:-27018}"
+MONGO_PORT="${MONGO_PORT:-27017}"
 WEB_PORT="${PORT:-3000}"
+HELIX7_DATABASE="${HELIX7_DBNAME:-helix7_v3}"
 
 bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; yellow=$'\033[33m'
 red=$'\033[31m'; cyan=$'\033[36m'; reset=$'\033[0m'
@@ -81,10 +82,12 @@ start_mongo() {
 report_data() {
   step "Dataset"
   local counts
-  counts=$(docker exec "$MONGO_CONTAINER" mongosh helix7 --quiet --eval '
-    const c = n => db.getCollection(n).countDocuments();
-    print([c("receptors"), c("ligands"), c("bioactivities")].join(" "));
-  ' 2>/dev/null | tr -d '\r' || echo "")
+  counts=$(docker exec -e REPORT_DB="$HELIX7_DATABASE" confs-db-1 sh -lc \
+    'mariadb -uroot -p"$MYSQL_ROOT_PASSWORD" -NBe \
+      "SELECT (SELECT COUNT(*) FROM \`${REPORT_DB}\`.receptors), \
+              (SELECT COUNT(*) FROM \`${REPORT_DB}\`.ligands), \
+              (SELECT COUNT(*) FROM \`${REPORT_DB}\`.bioactivities);"' \
+    2>/dev/null | tr -d '\r' || echo "")
 
   read -r receptors ligands acts <<<"${counts:-0 0 0}"
   if [ "${receptors:-0}" -gt 0 ] 2>/dev/null; then
@@ -145,38 +148,32 @@ cmd_stop() {
   printf '  %sThe Docker VM is left running; stop it with: colima stop%s\n' "$dim" "$reset"
 }
 
-cmd_etl() {
-  detect_compose
-  start_docker
-  start_mongo
-
-  step "ETL pipeline"
-  if [ ! -x etl/.venv/bin/python ]; then
-    warn "creating python venv"
-    python3 -m venv etl/.venv
-    etl/.venv/bin/pip install -q --upgrade pip
-    etl/.venv/bin/pip install -q httpx pymongo tenacity
-  fi
-  ( cd etl && ../etl/.venv/bin/python run_all.py )
-  report_data
+run_etl_container() {
+  local target="$1"
+  shift
+  docker run --rm \
+    --network dokhlab-net \
+    --env-file /home/html/confs/dokhlab.env \
+    -e DBHOST=db \
+    -e DBPORT=3306 \
+    -e HELIX7_DBNAME="$HELIX7_DATABASE" \
+    -v "$APP_DIR:/app:z" \
+    -w /app/etl \
+    python:3.13-slim \
+    bash -lc 'pip install -q httpx mysql-connector-python tenacity && python "/app/etl/$1" "${@:2}"' \
+    -- "$target" "$@"
 }
 
-ensure_venv() {
-  if [ ! -x etl/.venv/bin/python ]; then
-    warn "creating python venv"
-    python3 -m venv etl/.venv
-    etl/.venv/bin/pip install -q --upgrade pip
-    etl/.venv/bin/pip install -q httpx pymongo tenacity
-  fi
+cmd_etl() {
+  start_docker
+  step "ETL pipeline"
+  run_etl_container run_all.py
 }
 
 # Scheduled data refresh — safe to run from cron. Logs to etl/logs/ and records
 # the run in the `meta` collection. Passes any extra args through to update.py.
 cmd_update() {
-  detect_compose
   start_docker
-  start_mongo
-  ensure_venv
 
   mkdir -p etl/logs
   local ts log
@@ -186,7 +183,7 @@ cmd_update() {
   step "Data refresh"
   printf '  %slogging to %s%s\n' "$dim" "$log" "$reset"
   shift || true   # drop the "update" arg; forward the rest
-  if ( cd etl && ../etl/.venv/bin/python update.py "$@" ) 2>&1 | tee "$log"; then
+  if run_etl_container update.py "$@" 2>&1 | tee "$log"; then
     ok "refresh complete"
   else
     die "refresh failed — see $log"

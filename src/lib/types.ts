@@ -122,7 +122,7 @@ export interface TissueExpression {
 /** HPA single-cell type expression — a complementary, cell-resolution layer. */
 export interface SingleCellExpression {
   cellType: string;
-  /** Broad grouping (Neural, Immune, Epithelial, …) for colour/interpretation. */
+  /** Broad grouping for colour and interpretation in the UI. */
   cellClass?: string;
   /** Normalised expression (nCPM from HPA single-cell). */
   value: number;
@@ -207,11 +207,11 @@ export interface Receptor {
   gene: string;
   geneSynonyms: string[];
   uniprot: string;
-  /** Biological + common names (UniProt) for the search box; see s10_synonyms. */
+  /** Biological and common names used by the global search box. */
   searchTerms?: string[];
-  /** Normalised, space-joined search words (Greek spelled out, subscripts flat). */
+  /** Normalised, space-joined search words. */
   searchNorm?: string;
-  /** searchNorm with spaces removed, so "beta2" matches "beta 2". */
+  /** Normalised words with spaces removed. */
   searchCondensed?: string;
   /** Display name with HTML subscripts stripped, e.g. "D2 receptor". */
   name: string;
@@ -333,6 +333,7 @@ export interface TreeNode {
   receptorId?: string;
   gene?: string;
   devScore?: number;
+  tdl?: string;
   children?: TreeNode[];
 }
 
